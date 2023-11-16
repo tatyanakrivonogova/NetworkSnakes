@@ -3,7 +3,8 @@ module com.example.lab4 {
     requires javafx.fxml;
 
     requires org.controlsfx.controls;
+    requires org.slf4j;
 
-    opens com.example.lab4 to javafx.fxml;
-    exports com.example.lab4;
+    opens app to javafx.fxml;
+    exports app;
 }
