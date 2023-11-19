@@ -1,41 +1,89 @@
 package lab4.game;
 
-import lab4.game.player.Player;
-import lab4.game.point.Point;
-import lab4.config.GameConfiguration;
-import lab4.game.snake.SnakeParams;
+import lab4.config.GameConfig;
+import lab4.game.player.GamePlayer;
+import lab4.game.snake.Snake;
 
-import java.io.Serializable;
-import java.util.Collections;
-import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class GameState implements Serializable {
-    private final List<Point> foods;
-    private final List<Player> activePlayers;
-    private final List<SnakeParams> snakeParams;
-    private final GameConfiguration config;
-    private final int stateID;
+public class GameState {
+    private int stateOrder;
+    private final HashMap<Integer, Snake> snakes;
+    private GameConfig config;
+    private final ArrayList<Coord> foods;
+    private final ConcurrentHashMap<Integer, GamePlayer> players;
+    private final int localId;
 
-    public GameState(List<Point> foods, List<Player> activePlayers, List<SnakeParams> snakeParams, GameConfiguration config, int stateID) {
-        this.foods = Collections.unmodifiableList(foods);
-        this.activePlayers = Collections.unmodifiableList(activePlayers);
-        this.snakeParams = Collections.unmodifiableList(snakeParams);
+    public GameState(GameConfig config, ConcurrentHashMap<Integer, GamePlayer> players, HashMap<Integer, Snake> snakes, int localId) {
+        this.stateOrder = 0;
+        this.snakes = snakes;
+        this.foods = new ArrayList<>();
+        this.players = players;
+        this.localId = localId;
         this.config = config;
-        this.stateID = stateID;
     }
-    public int getStateID() {
-        return stateID;
+
+    public GameState(GameConfig config, int stateOrder, HashMap<Integer, Snake> snakes, ArrayList<Coord> foods, ConcurrentHashMap<Integer, GamePlayer> players, int localId) {
+        this.stateOrder = stateOrder;
+        this.snakes = snakes;
+        this.foods = foods;
+        this.players = players;
+        this.localId = localId;
+        this.config = config;
     }
-    public List<Point> getFoods() {
+
+    public ConcurrentHashMap<Integer, GamePlayer> getPlayers() {
+        return players;
+    }
+
+    public void setNextStateOrder() {
+        stateOrder++;
+    }
+
+    public int getLocalId() {
+        return localId;
+    }
+
+    public ArrayList<Coord> getFoods() {
         return foods;
     }
-    public List<Player> getActivePlayers() {
-        return activePlayers;
+
+    public int getStateOrder() {
+        return stateOrder;
     }
-    public List<SnakeParams> getSnakeParams() {
-        return snakeParams;
+
+    public HashMap<Integer, Snake> getSnakes() {
+        return snakes;
     }
-    public GameConfiguration getGameConfiguration() {
+
+    public void addPlayer(GamePlayer player) {
+        this.players.put(player.getId(), player);
+    }
+
+    public void addSnake(Snake snake) throws RuntimeException {
+        snakes.forEach((integer, snake1) -> snake1.getBody().forEach(coord -> {
+            if (snake.isBumped(coord)) {
+                throw new RuntimeException("unavailable place to create Snake");
+            }
+        }));
+        snakes.put(snake.getPlayerId(), snake);
+    }
+
+    public void addFood(Coord food) {
+        this.foods.add(food);
+    }
+
+    public int getPlayersCount() {
+        return players.size();
+    }
+
+    public GameConfig getConfig() {
         return config;
+    }
+
+    public void setConfig(GameConfig config) {
+        this.config = config;
     }
 }
