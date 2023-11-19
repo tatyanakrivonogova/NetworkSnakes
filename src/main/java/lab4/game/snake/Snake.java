@@ -13,8 +13,9 @@ import java.util.List;
 public class Snake {
     private final Logger logger = LoggerFactory.getLogger(Snake.class);
     private final List<Coord> body;
+    private Coord head;
     GameConfig config;
-    private SnakeState snakeState;
+    private final SnakeState snakeState;
     private int playerId;
     private Direction headDirection;
     private Boolean isDirectionUpdated;
@@ -28,6 +29,7 @@ public class Snake {
         if (headDirection == null) {
             logger.error("Snake constructor: Unable to find direction of snake");
         }
+        this.head = head;
         body = createSnakePart(head, offset);
         if (body == null) {
             logger.error("Snake constructor: wrong coords");
@@ -44,6 +46,7 @@ public class Snake {
         this.config = config;
         body = new ArrayList<>();
         keyCoordsToBody(keyCoords);
+        head = body.get(0);
 
         this.snakeState = snakeState;
         this.playerId = playerId;
@@ -168,6 +171,7 @@ public class Snake {
     public List<Coord> getBody() {
         return body;
     }
+    public Coord getHead() { return head; }
 
     public void move() {
         body.remove(body.size() - 1);
@@ -195,7 +199,6 @@ public class Snake {
                 case RIGHT -> headDirection == Direction.LEFT;
             };
         }
-        return false;
     }
 
 }

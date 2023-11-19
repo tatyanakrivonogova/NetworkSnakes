@@ -8,17 +8,15 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 
-public class DatagramSocketWrapper implements IChannel {
-
+public class DatagramSocketWrapper implements IDatagramChannel {
     private final static int DATAGRAM_PACKET_LENGTH = 4096;
     private final DatagramSocket socket;
     private final Logger logger = LoggerFactory.getLogger(DatagramSocketWrapper.class);
 
-    public DatagramSocketWrapper(int rcvTimeout) throws SocketException {
+    public DatagramSocketWrapper(int timeout) throws SocketException {
         try {
-
             socket = new DatagramSocket();
-            socket.setSoTimeout(rcvTimeout);
+            socket.setSoTimeout(timeout);
         } catch (SocketException e) {
             logger.error("DatagramSocketWrapper constructor:" + e);
             throw e;

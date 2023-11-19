@@ -23,7 +23,7 @@ public class Node implements INode {
     private final long IS_ALIVE_TIMEOUT = 1100;
     Logger logger = LoggerFactory.getLogger(Node.class);
     private IView view;
-    private TransferProtocol channel;
+    private TransferProtocol transferProtocol;
     private GameConfig gameConfig;
     private GameState gameState;
     private int masterPort;
@@ -38,12 +38,13 @@ public class Node implements INode {
     public Node(IView view) {
         try {
             this.view = view;
-            this.channel = TransferProtocol.getTransferProtocolInstance();
+            this.transferProtocol = TransferProtocol.getTransferProtocolInstance();
             joinAwaiting = false;
             this.mastersCollection = new ConcurrentHashMap<>();
             isMaster = false;
         } catch (IOException e) {
-            logger.error("Node constructor: unable to create TransferProtocol: " + e + "\nShutdown...");
+            logger.error("Node constructor: unable to create TransferProtocol: " + e);
+            logger.error("Shutdown...");
             shutdown();
         }
 
@@ -117,10 +118,12 @@ public class Node implements INode {
                     playerName,
                     gameName,
                     RoleMapper.toProtobuf(requestedRole),
-                    channel.getNextMessageId());
-            channel.send(joinMessage, chosenGame.getMasterIp(), chosenGame.getMasterPort());
+                    transferProtocol.getNextMessageId());
+            transferProtocol.send(joinMessage, chosenGame.getMasterIp(), chosenGame.getMasterPort());
             joinAwaiting = true;
             gameConfig = chosenGame.getConfig();
+            masterId = chosenGame.getMasterId();
+            logger.info("Master was set " + chosenGame.getMasterId());
         }
     }
 
@@ -190,17 +193,18 @@ public class Node implements INode {
 
         if (isMaster) {
             SnakesProto.GameMessage message = MessageBuilder.buildSteerMessage(DirectionMapper.toProtobuf(dir), -1, localId);
-            channel.sendMyself(message);
+            transferProtocol.sendMyself(message);
         } else {
             SnakesProto.GameMessage message = MessageBuilder.buildSteerMessage(DirectionMapper.toProtobuf(dir),
-                    channel.getNextMessageId(), localId);
-            channel.send(message, masterIp, masterPort);
+                    transferProtocol.getNextMessageId(), localId);
+            transferProtocol.send(message, masterIp, masterPort);
         }
     }
 
     private void ackNewRole() {
+        logger.info("Master id: " + masterId);
         SnakesProto.GameMessage message = MessageBuilder.buildAckMessage(0, localId, masterId);
-        channel.send(message, masterIp, masterPort);
+        transferProtocol.send(message, masterIp, masterPort);
     }
 
     @Override
@@ -214,6 +218,5 @@ public class Node implements INode {
     }
     @Override
     public void shutdown() {
-
     }
 }

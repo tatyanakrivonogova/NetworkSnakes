@@ -49,6 +49,7 @@ public class GameModel implements IGameModel, Subscriber {
             logger.error("GameModel constructor: " + e);
             logger.info("Shutdown...");
             shutdown();
+            disposable.dispose();
         }
     }
 
@@ -139,7 +140,6 @@ public class GameModel implements IGameModel, Subscriber {
             masterNode.ackNewDeputy(senderIp, senderPort);
         } else {
             if (node.getJoinAwaiting()) {
-                //transferProtocol.setLocalId(msg.getReceiverId());
                 localPlayer.setId(msg.getReceiverId());
                 localPlayer.setPlayerType(PlayerType.HUMAN);
                 localPlayer.setScore(0);

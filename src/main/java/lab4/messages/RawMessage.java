@@ -3,9 +3,9 @@ package lab4.messages;
 import java.net.InetAddress;
 
 public class RawMessage {
-    private byte[] message;
-    private InetAddress senderAddress;
-    private int senderPort;
+    private final byte[] message;
+    private final InetAddress senderAddress;
+    private final int senderPort;
 
     public RawMessage(byte[] message, InetAddress senderAddress, int senderPort) {
         this.message = message;
@@ -25,7 +25,7 @@ public class RawMessage {
         return message;
     }
 
-    public void setMessage(byte[] message) {
-        this.message = message;
-    }
+//    public void setMessage(byte[] message) {
+//        this.message = message;
+//    }
 }

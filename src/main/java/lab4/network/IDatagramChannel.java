@@ -5,11 +5,9 @@ import lab4.messages.RawMessage;
 import java.io.IOException;
 import java.net.InetAddress;
 
-public interface IChannel {
+public interface IDatagramChannel {
     void send(byte[] data, InetAddress receiverAddress, int receiverPort) throws IOException;
-
     RawMessage receive() throws IOException;
-
     void close();
 
 }

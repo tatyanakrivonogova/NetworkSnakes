@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TransferProtocol implements Runnable, Publisher {
     private static volatile TransferProtocol transferProtocolInstance;
     private static Thread thread;
-    private final IChannel channel;
+    private final IDatagramChannel datagramChannel;
     private final int rcvTimeout = 20;
     private final Logger logger = LoggerFactory.getLogger(TransferProtocol.class);
     private long ackTimeout;
@@ -33,14 +33,13 @@ public class TransferProtocol implements Runnable, Publisher {
     private final ArrayList<Subscriber> subscribers = new ArrayList<>();
     private long nextMessageId;
     private long sendingNumber;
-//    private int localId;
 
 
     private TransferProtocol() throws IOException {
         toSend = new ConcurrentHashMap<>();
         receivedMessages = new ConcurrentHashMap<>();
         timerMap = new ConcurrentHashMap<>();
-        channel = new DatagramSocketWrapper(rcvTimeout);
+        datagramChannel = new DatagramSocketWrapper(rcvTimeout);
         sendingNumber = 1;
         nextMessageId = 0;
     }
@@ -68,11 +67,6 @@ public class TransferProtocol implements Runnable, Publisher {
         nextMessageId++;
         return nextMessageId;
     }
-
-
-//    public void setLocalId(int localId) {
-//        this.localId = localId;
-//    }
 
     @Override
     public void run() {
@@ -107,7 +101,7 @@ public class TransferProtocol implements Runnable, Publisher {
         SentMessage newMessage;
         if (message.hasAck() || message.hasAnnouncement() || message.hasDiscover()) {
             try {
-                channel.send(message.toByteArray(), rcvAddress, rcvPort);
+                datagramChannel.send(message.toByteArray(), rcvAddress, rcvPort);
             } catch (IOException e) {
                 logger.error("TransferProtocol: " + e);
             }
@@ -127,12 +121,12 @@ public class TransferProtocol implements Runnable, Publisher {
             timerMap.remove(message.getSeq());
             OneShootTimer timer = new OneShootTimer(ackTimeout, () -> {
                 try {
-                    channel.send(message.getGameMessage().toByteArray(), message.getReceiverAddress(), message.getReceiverPort());
+                    datagramChannel.send(message.getGameMessage().toByteArray(), message.getReceiverAddress(), message.getReceiverPort());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             });
-            channel.send(message.getGameMessage().toByteArray(), message.getReceiverAddress(), message.getReceiverPort());
+            datagramChannel.send(message.getGameMessage().toByteArray(), message.getReceiverAddress(), message.getReceiverPort());
             timer.start();
             timerMap.put(message.getSeq(), timer);
         } catch (IOException e) {
@@ -141,16 +135,15 @@ public class TransferProtocol implements Runnable, Publisher {
     }
 
     private void receiveMessage() throws IOException {
-        RawMessage rcvData = channel.receive();
+        RawMessage rcvData = datagramChannel.receive();
         if (rcvData != null) {
             SnakesProto.GameMessage gameMessage = SnakesProto.GameMessage.parseFrom(rcvData.getMessage());
 
             if ((gameMessage.hasAck() && gameMessage.getReceiverId() != 0) || gameMessage.hasAnnouncement() || gameMessage.hasDiscover()) {
-
                 notifySubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort()));
             } else {
                 long seq = gameMessage.getMsgSeq();
-                if (gameMessage.hasAck()) {
+                if (gameMessage.hasAck()) { //!!!!!!!!!!!!!!!!!!!!!!!!!
                     ackSentMessage(seq);
                 } else {
                     sendAck(seq, rcvData.getSenderAddress(), rcvData.getSenderPort());
@@ -185,7 +178,7 @@ public class TransferProtocol implements Runnable, Publisher {
 
     private void sendAck(long seq, InetAddress receiverAddress, int receiverPort) throws IOException {
         SnakesProto.GameMessage message = MessageBuilder.buildAckMessage(seq, 0, 0);
-        channel.send(message.toByteArray(), receiverAddress, receiverPort);
+        datagramChannel.send(message.toByteArray(), receiverAddress, receiverPort);
     }
 
     @Override
@@ -199,7 +192,7 @@ public class TransferProtocol implements Runnable, Publisher {
     }
 
     public void shutdown() {
-        this.channel.close();
+        this.datagramChannel.close();
         timerMap.forEach((i, t) -> t.cancel());
         thread.interrupt();
     }

@@ -3,9 +3,10 @@ package lab4.config;
 public class GameConfig {
     private int width;
     private int height;
-    private int foodStatic;
+    private final int foodStatic;
     private int stateDelayMs;
-    private String gameName;
+    private double probabilityForFood = 0.5;
+    private final String gameName;
 
     public GameConfig(int width, int height, int foodStatic, int stateDelayMs, String gameName) {
         this.width = width;
@@ -19,17 +20,11 @@ public class GameConfig {
         return gameName;
     }
 
-    public void setGameName(String gameName) {
-        this.gameName = gameName;
-    }
-
     public int getFoodStatic() {
         return foodStatic;
     }
 
-    public void setFoodStatic(int foodStatic) {
-        this.foodStatic = foodStatic;
-    }
+    public double getProbabilityForFood() { return probabilityForFood; }
 
     public int getHeight() {
         return height;

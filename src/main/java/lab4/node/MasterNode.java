@@ -7,8 +7,6 @@ import lab4.game.player.PlayerType;
 import lab4.game.snake.Snake;
 import lab4.mappers.*;
 import lab4.messages.MessageBuilder;
-import lab4.network.IMulticastChannel;
-import lab4.network.MulticastSocketWrapper;
 import lab4.network.TransferProtocol;
 import lab4.proto.SnakesProto;
 import lab4.timer.InfiniteShootsTimer;
@@ -26,18 +24,17 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MasterNode implements IMasterNode {
     private final static String MULTICAST_IP = "239.192.0.4";
     private final static int MULTICAST_PORT = 8888;
+    private final static int ANNOUNCEMENT_TIMEOUT = 1000;
     private final Logger logger = LoggerFactory.getLogger(MasterNode.class);
     private final GameState gameState;
     private final InfiniteShootsTimer announcementSender;
     private final InfiniteShootsTimer stateSender;
     private final int localId;
-    private final int announcementTimeoutMs = 1000;
     private final ArrayList<Integer> diedPlayersId;
     private TransferProtocol transferProtocol;
     private INode node;
-//    private IMulticastChannel multicastChannel;
     private final InetAddress multicastAddress;
-    private int nextId;
+    private int currentId;
     private Boolean deputyAckAwaiting;
     private InetAddress deputyIp;
     private int deputyPort;
@@ -53,12 +50,9 @@ public class MasterNode implements IMasterNode {
         ConcurrentHashMap<Integer, GamePlayer> players = new ConcurrentHashMap<>();
         GamePlayer localPlayer = new GamePlayer(playerName, localId, NodeRole.MASTER, type, 0);
         players.put(localPlayer.getId(), localPlayer);
-        Coord localSnakeHead = new Coord((int) (Math.random() * 100), (int) (Math.random() * 100));
-        localSnakeHead.normalize(config.getWidth(), config.getHeight());
-        Snake localSnake = new Snake(localId, localSnakeHead, generateOffset(), config);
-        HashMap<Integer, Snake> snakes = new HashMap<>();
-        snakes.put(localId, localSnake);
-        this.gameState = new GameState(config, players, snakes, localId);
+        this.gameState = new GameState(config, players, new HashMap<>(), localId);
+        gameState.addSnake(localId);
+
         try {
             this.transferProtocol = TransferProtocol.getTransferProtocolInstance();
         } catch (IOException e) {
@@ -67,18 +61,12 @@ public class MasterNode implements IMasterNode {
             shutdown();
         }
         this.localId = localId;
-//        try {
-//            multicastChannel = new MulticastSocketWrapper(InetAddress.getByName(MULTICAST_IP), MULTICAST_PORT);
-//        } catch (IOException e) {
-//            logger.error("Master node constructor: error while creating MulticastSocketWrapper: " + e);
-//            logger.info("Shutdown...");
-//            shutdown();
-//        }
-        this.nextId = 1;
+        this.currentId = 1;
         this.deputyAckAwaiting = false;
-        announcementSender = new InfiniteShootsTimer(announcementTimeoutMs, () -> {
+        announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
             try {
                 sendAnnouncement();
+                logger.info("Announcement successful");
             } catch (IOException e) {
                 logger.error("Master node.sendAnnouncement() exception: " + e);
                 throw new RuntimeException(e);
@@ -99,34 +87,8 @@ public class MasterNode implements IMasterNode {
 
     private void setFoods() {
         for (int i = 0; i < gameState.getConfig().getFoodStatic(); i++) {
-            gameState.addFood(generateFood());
+            gameState.addFood();
         }
-    }
-
-    private Coord generateOffset() {
-        int direction = (int) (Math.random() * 3);
-        return switch (direction) {
-            case 0 -> new Coord(0, 1);
-            case 1 -> new Coord(0, -1);
-            case 2 -> new Coord(1, 0);
-            default -> new Coord(-1, 0);
-        };
-    }
-
-    private Coord generateFood() {
-        while (true) { //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            int x = (int) (Math.random() * 100);
-            int y = (int) (Math.random() * 100);
-            Coord food = new Coord(x, y);
-            food.normalize(gameState.getConfig().getWidth(), gameState.getConfig().getHeight());
-            if (!checkFoodCollisions(food)) {
-                return food;
-            }
-        }
-    }
-
-    private Boolean checkFoodCollisions(Coord food) {
-        return gameState.getFoods().contains(food);
     }
 
     private void sendState() {
@@ -157,8 +119,8 @@ public class MasterNode implements IMasterNode {
 
     @Override
     public int getNextId() {
-        nextId++;
-        return nextId;
+        currentId++;
+        return currentId;
     }
 
     @Override
@@ -176,6 +138,7 @@ public class MasterNode implements IMasterNode {
         GameAnnouncement gameAnnouncement = new GameAnnouncement(gameState.getPlayers(), gameState.getConfig(), checkCanJoin(), gameState.getConfig().getGameName(), localId);
         List<SnakesProto.GameAnnouncement> announcementList = new ArrayList<>();
         announcementList.add(AnnouncementMapper.toProtobuf(gameAnnouncement));
+        logger.info("Master: local id: " + localId);
         SnakesProto.GameMessage announcementMessage = MessageBuilder.buildAnnouncementMessageBroadcast(announcementList, localId);
         transferProtocol.send(announcementMessage, multicastAddress, MULTICAST_PORT);
     }
@@ -222,8 +185,7 @@ public class MasterNode implements IMasterNode {
         if ((requestedRole == SnakesProto.NodeRole.NORMAL)) {
             int newPlayerId = getNextId();
             try {
-                gameState.addSnake(new Snake(newPlayerId, new Coord((int) (Math.random() * 100), (int) (Math.random() * 100)),
-                        generateOffset(), gameState.getConfig()));//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                gameState.addSnake(newPlayerId);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             } catch (RuntimeException e) {
                 SnakesProto.GameMessage message = MessageBuilder.buildErrorMessage("failed to place the snake, try again");
                 transferProtocol.send(message, newPlayerIp, newPlayerPort);
@@ -256,7 +218,8 @@ public class MasterNode implements IMasterNode {
         gameState.getSnakes().forEach((id1, snake1) -> {
             gameState.getSnakes().forEach((id2, snake2) -> {
                 if (snake1.getPlayerId() != snake2.getPlayerId() && snake1.isBumped(snake2.getBody().get(0))) {
-                    diedPlayersId.add(snake2.getPlayerId());//!!!!!!!!!!!!!!!!!1
+                    diedPlayersId.add(snake2.getPlayerId());//!!!!!!!!!!!!!!!!!
+                    gameState.diedSnakeToFood(snake2);
                 }
             });
             if (snake1.isBumpedSelf()) {
@@ -281,14 +244,12 @@ public class MasterNode implements IMasterNode {
         eatenFoods.forEach(food -> gameState.getFoods().remove(food));
         if (gameState.getFoods().size() < gameState.getConfig().getFoodStatic()) {
             for (int i = 0; i < gameState.getConfig().getFoodStatic() - gameState.getFoods().size(); i++) {
-                gameState.addFood(generateFood());
+                gameState.addFood();
             }
         }
-
     }
 
     public void shutdown() {
-        //multicastChannel.close();
         announcementSender.cancel();
         stateSender.cancel();
     }

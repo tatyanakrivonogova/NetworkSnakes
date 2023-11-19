@@ -14,13 +14,11 @@ import java.nio.ByteBuffer;
 public class MulticastReceiver {
     private final int DATAGRAM_PACKET_LENGTH = 4096;
     private final InetAddress multicastAddress;
-    private final int multicastPort;
     private final MulticastSocket socket;
 
     public MulticastReceiver(InetAddress multicastAddress, int multicastPort) throws IOException {
 
         this.multicastAddress = multicastAddress;
-        this.multicastPort = multicastPort;
         socket = new MulticastSocket(multicastPort);
         socket.joinGroup(multicastAddress);
     }

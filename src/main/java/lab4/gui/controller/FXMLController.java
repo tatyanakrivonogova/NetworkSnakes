@@ -110,6 +110,9 @@ public class FXMLController implements IController {
 
     public void onJoinPlayerButtonClick() {
         String selcetedString = mastersList.getSelectionModel().getSelectedItem();
+        if (selcetedString == null) {
+            view.showError("Select game and click again");
+        }
         model.setLocalPlayerRole(NodeRole.NORMAL);
         model.setLocalPlayerName(playerNameField.getText());
         node.chooseGame(new String(selcetedString.getBytes(), 11, selcetedString.length() - 11),
@@ -127,7 +130,6 @@ public class FXMLController implements IController {
         joinViewerButton.setDisable(true);
         joinPlayerButton.setDisable(true);
     }
-
 
     @Override
     public void stop() {
