@@ -18,19 +18,22 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MasterNode implements IMasterNode {
     private final static String MULTICAST_IP = "239.192.0.4";
-    private final static int MULTICAST_PORT = 8888;
+    private final static int MULTICAST_PORT = 9192;
     private final static int ANNOUNCEMENT_TIMEOUT = 1000;
     private final Logger logger = LoggerFactory.getLogger(MasterNode.class);
     private final GameState gameState;
     private final InfiniteShootsTimer announcementSender;
     private final InfiniteShootsTimer stateSender;
     private final int localId;
+    private final HashSet<GamePlayer> viewers;
     private final ArrayList<Integer> diedPlayersId;
+    private final HashMap<Snake, Direction> snakeDirections;
     private TransferProtocol transferProtocol;
     private INode node;
     private final InetAddress multicastAddress;
@@ -41,7 +44,9 @@ public class MasterNode implements IMasterNode {
 
     public MasterNode(int localId, GameConfig config, String playerName, PlayerType type, INode node) {
         this.node = node;
+        this.viewers = new HashSet<>();
         this.diedPlayersId = new ArrayList<>();
+        this.snakeDirections = new HashMap<>();
         try {
             this.multicastAddress = InetAddress.getByName(MULTICAST_IP);
         } catch (UnknownHostException e) {
@@ -92,6 +97,8 @@ public class MasterNode implements IMasterNode {
     }
 
     private void sendState() {
+        System.out.println("Players count: " + gameState.getPlayers().size());
+        System.out.println("Viewers count: " + viewers.size());
         gameState.getPlayers().forEach((id, player) -> {
             if (id == localId) {
                 SnakesProto.GameMessage stateMsg = MessageBuilder.buildStateMessage(StateMapper.toProtobuf(gameState, localId), -1);
@@ -101,6 +108,10 @@ public class MasterNode implements IMasterNode {
                 transferProtocol.send(stateMsg, player.getIpAddress(), player.getPort());
             }
         });
+        viewers.forEach((viewer) -> {
+            SnakesProto.GameMessage stateMsg = MessageBuilder.buildStateMessage(StateMapper.toProtobuf(gameState, localId), transferProtocol.getNextMessageId());
+            transferProtocol.send(stateMsg, viewer.getIpAddress(), viewer.getPort());
+        });
     }
 
     @Override
@@ -109,9 +120,10 @@ public class MasterNode implements IMasterNode {
         if (snake != null) {
             Direction newDir = DirectionMapper.toClass(headDirection);
             assert newDir != null;
-            if (snake.canTurn(newDir)) {
-                snake.setHeadDirection(newDir);
-            }
+            snakeDirections.put(snake, newDir);
+//            if (snake.canTurn(newDir)) {
+//                snake.setHeadDirection(newDir);
+//            }
         } else {
             logger.error("Steer msg for snake that isn't alive");
         }
@@ -153,8 +165,8 @@ public class MasterNode implements IMasterNode {
     }
 
     private Boolean checkCanJoin() {
-        return true;
-    } //!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        return gameState.hasEmptySquare();
+    }
 
     private void sendAck(long msgSeq, int senderId, int receiverId, InetAddress receiverIp, int receiverPort) {
         transferProtocol.send(MessageBuilder.buildAckMessage(msgSeq, senderId, receiverId), receiverIp, receiverPort);
@@ -171,10 +183,12 @@ public class MasterNode implements IMasterNode {
         if (player.getIsLocal()) {
             SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
                     SnakesProto.NodeRole.VIEWER, -1);
+            viewers.add(player);
             transferProtocol.sendMyself(msg);
         } else {
             SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
                     SnakesProto.NodeRole.VIEWER, transferProtocol.getNextMessageId());
+            viewers.add(player);
             transferProtocol.send(msg, player.getIpAddress(), player.getPort());
         }
     }
@@ -182,10 +196,15 @@ public class MasterNode implements IMasterNode {
     @Override
     public void handleJoin(long msgSeq, String gameName, String playerName, SnakesProto.PlayerType playerType,
                            SnakesProto.NodeRole requestedRole, InetAddress newPlayerIp, int newPlayerPort) {
-        if ((requestedRole == SnakesProto.NodeRole.NORMAL)) {
+        if (requestedRole == SnakesProto.NodeRole.VIEWER) {
+            GamePlayer newPlayer = new GamePlayer(playerName, -1, newPlayerIp, newPlayerPort,
+                    RoleMapper.toClass(requestedRole), TypeMapper.toClass(playerType), 0);
+            viewers.add(newPlayer);
+            sendAck(msgSeq, localId, -1, newPlayerIp, newPlayerPort);
+        } else if (requestedRole == SnakesProto.NodeRole.NORMAL) {
             int newPlayerId = getNextId();
             try {
-                gameState.addSnake(newPlayerId);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                gameState.addSnake(newPlayerId);
             } catch (RuntimeException e) {
                 SnakesProto.GameMessage message = MessageBuilder.buildErrorMessage("failed to place the snake, try again");
                 transferProtocol.send(message, newPlayerIp, newPlayerPort);
@@ -205,29 +224,38 @@ public class MasterNode implements IMasterNode {
 
     @Override
     public void handleRoleChangeToViewer(InetAddress requesterIp, int requesterPort, int playerId) {
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!
+        gameState.getPlayers().get(playerId).setRole(NodeRole.VIEWER);
+        viewers.add(gameState.getPlayers().get(playerId));
+        gameState.getPlayers().remove(playerId);
     }
 
     private void updateState() {
         gameState.setNextStateOrder();
         gameState.getSnakes().forEach((id, snake) -> {
+            if (snakeDirections.containsKey(snake)) {
+                if (snake.canTurn(snakeDirections.get(snake))) {
+                    snake.setHeadDirection(snakeDirections.get(snake));
+                }
+            }
             snake.move();
-            snake.normalizeCoords();
+            snake.normalizeBodyCoords();
             snake.setDirectionUpdated(false);
         });
         gameState.getSnakes().forEach((id1, snake1) -> {
             gameState.getSnakes().forEach((id2, snake2) -> {
                 if (snake1.getPlayerId() != snake2.getPlayerId() && snake1.isBumped(snake2.getBody().get(0))) {
-                    diedPlayersId.add(snake2.getPlayerId());//!!!!!!!!!!!!!!!!!
+                    diedPlayersId.add(snake2.getPlayerId());
                     gameState.diedSnakeToFood(snake2);
+                    gameState.getPlayers().get(id1).increaseScore(1);
                 }
             });
             if (snake1.isBumpedSelf()) {
-                diedPlayersId.add(snake1.getPlayerId());//!!!!!!!!!!!!!!!!!!!!
+                diedPlayersId.add(snake1.getPlayerId());
+                gameState.diedSnakeToFood(snake1);
             }
         });
         diedPlayersId.forEach(id -> {
-            gameState.getSnakes().remove(id); //!!!!!!!!!!!!!!!!!!!!!
+            gameState.getSnakes().remove(id);
             GamePlayer diedPlayer = gameState.getPlayers().get(id);
             diedPlayer.setRole(NodeRole.VIEWER);
             sendRoleChangeToViewer(diedPlayer);
@@ -242,8 +270,8 @@ public class MasterNode implements IMasterNode {
             }
         }));
         eatenFoods.forEach(food -> gameState.getFoods().remove(food));
-        if (gameState.getFoods().size() < gameState.getConfig().getFoodStatic()) {
-            for (int i = 0; i < gameState.getConfig().getFoodStatic() - gameState.getFoods().size(); i++) {
+        if (gameState.getFoods().size() < (gameState.getConfig().getFoodStatic() + gameState.getSnakesCount())) {
+            while (gameState.getFoods().size() < (gameState.getConfig().getFoodStatic() + gameState.getSnakesCount())) {
                 gameState.addFood();
             }
         }

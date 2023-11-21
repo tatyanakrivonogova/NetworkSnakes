@@ -18,13 +18,13 @@ public class GUI implements IView {
     private static final int CELL_SIZE = 20;
     private final Canvas field;
     private final ArrayList<String> activeGames;
-    private final ListView<String> serversView;
+    private final ListView<String> mastersView;
     private final Label rightStatus;
     private final Label leftStatus;
 
-    public GUI(Canvas field, ListView<String> serversList, Label rightStatus, Label leftStatus) {
+    public GUI(Canvas field, ListView<String> mastersList, Label rightStatus, Label leftStatus) {
         this.field = field;
-        this.serversView = serversList;
+        this.mastersView = mastersList;
         this.activeGames = new ArrayList<>();
         this.rightStatus = rightStatus;
         this.leftStatus = leftStatus;
@@ -46,22 +46,26 @@ public class GUI implements IView {
 
     @Override
     public void drawNewGameList() {
-        serversView.getItems().clear();
+        mastersView.getItems().clear();
         for (String gameName : activeGames) {
-            serversView.getItems().add("Game name: " + gameName);
+            mastersView.getItems().add("Game name: " + gameName);
         }
     }
 
     @Override
     public void repaintField(GameState state, GameConfig config, int localId) {
-        leftStatus.setText("SCORE: " + state.getPlayers().get(localId).getScore());
+        if (state.getPlayers().get(localId) != null) {
+            leftStatus.setText("SCORE: " + state.getPlayers().get(localId).getScore());
+        } else {
+            leftStatus.setText("SCORE: --- (YOU ARE VIEWER)");
+        }
         drawGrid(config.getWidth(), config.getHeight());
         state.getFoods().forEach(this::drawFood);
         state.getSnakes().forEach((id, snake) -> {
             if (snake.getPlayerId() == state.getLocalId()) {
                 drawSnake(snake, Color.BLUEVIOLET);
             } else {
-                drawSnake(snake, Color.BLACK);
+                drawSnake(snake, Color.DARKOLIVEGREEN);
             }
         });
     }
@@ -70,8 +74,9 @@ public class GUI implements IView {
         GraphicsContext context = field.getGraphicsContext2D();
 
         context.clearRect(0.0, 0.0, field.getWidth(), field.getHeight());
-        context.setFill(Color.LIGHTGREEN);
-        context.setLineWidth(0.5);
+        context.setFill(Color.GREENYELLOW);
+        context.fillRect(0.0, 0.0, CELL_SIZE * width, CELL_SIZE * height);
+        context.setLineWidth(1);
 
         for (int i = 0; i < width + 1; i++) {
             context.strokeLine(
@@ -80,6 +85,7 @@ public class GUI implements IView {
                     (CELL_SIZE * i),
                     (height * CELL_SIZE)
             );
+            context.setStroke(Color.GRAY);
         }
         for (int i = 0; i < height + 1; i++) {
             context.strokeLine(
@@ -88,6 +94,7 @@ public class GUI implements IView {
                     (width * CELL_SIZE),
                     (CELL_SIZE * i)
             );
+            context.setStroke(Color.GRAY);
         }
     }
 

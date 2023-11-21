@@ -25,7 +25,7 @@ import java.net.InetAddress;
 
 public class GameModel implements IGameModel, Subscriber {
     private final static String MULTICAST_IP = "239.192.0.4";
-    private final static int MULTICAST_PORT = 8888;
+    private final static int MULTICAST_PORT = 9192;
     private final Logger logger = LoggerFactory.getLogger(GameModel.class);
     private INode node;
     private IMasterNode masterNode;

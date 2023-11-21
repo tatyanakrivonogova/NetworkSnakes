@@ -9,6 +9,7 @@ import lab4.mappers.*;
 import lab4.messages.MessageBuilder;
 import lab4.network.TransferProtocol;
 import lab4.proto.SnakesProto;
+import lab4.timer.InfiniteShootsTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Node implements INode {
     private final long IS_ALIVE_TIMEOUT = 1100;
+    private final static int ANNOUNCEMENT_TIMEOUT = 1000;
     Logger logger = LoggerFactory.getLogger(Node.class);
     private IView view;
     private TransferProtocol transferProtocol;
@@ -33,7 +35,7 @@ public class Node implements INode {
     private Boolean joinAwaiting;
     private Boolean isMaster;
     private ConcurrentHashMap<Long, GameAnnouncement> mastersCollection;
-
+    private final InfiniteShootsTimer announcementUpdater;
 
     public Node(IView view) {
         try {
@@ -47,7 +49,12 @@ public class Node implements INode {
             logger.error("Shutdown...");
             shutdown();
         }
-
+        this.announcementUpdater = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> Platform.runLater(() -> {
+            view.drawNewGameList();
+            System.out.println("Update");
+        }));
+        announcementUpdater.start();
+        System.out.println("Node is created");
     }
 
     @Override
@@ -106,6 +113,7 @@ public class Node implements INode {
 
     @Override
     public void chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
+        System.out.println("Choose game");
         GameAnnouncement chosenGame = null;
         for (GameAnnouncement gameAnnouncement : mastersCollection.values()) {
             if (gameName.equals(gameAnnouncement.getGameName())) {
@@ -113,6 +121,7 @@ public class Node implements INode {
             }
         }
         if (chosenGame != null) {
+            System.out.println("Game is chosen");
             SnakesProto.GameMessage joinMessage = MessageBuilder.buildJoinMessage(
                     TypeMapper.toProtobuf(playerType),
                     playerName,
@@ -124,7 +133,10 @@ public class Node implements INode {
             gameConfig = chosenGame.getConfig();
             masterId = chosenGame.getMasterId();
             logger.info("Master was set " + chosenGame.getMasterId());
+        } else {
+            logger.error("Chosen game is null");
         }
+        announcementUpdater.cancel();
     }
 
     @Override
@@ -165,8 +177,7 @@ public class Node implements INode {
     @Override
     public void handleState(SnakesProto.GameState state) {
         this.gameState = StateMapper.toClass(state, localId, gameConfig);
-        Platform.runLater(() ->
-                view.repaintField(gameState, gameConfig, localId));
+        Platform.runLater(() -> view.repaintField(gameState, gameConfig, localId));
     }
 
     @Override
@@ -190,7 +201,6 @@ public class Node implements INode {
     }
 
     private void sendSteer(Direction dir) {
-
         if (isMaster) {
             SnakesProto.GameMessage message = MessageBuilder.buildSteerMessage(DirectionMapper.toProtobuf(dir), -1, localId);
             transferProtocol.sendMyself(message);

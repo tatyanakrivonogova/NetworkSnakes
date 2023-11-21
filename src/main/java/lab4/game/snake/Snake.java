@@ -102,7 +102,7 @@ public class Snake {
             prev = new Coord(prev.getX() + keyCoords.get(i).getX(), prev.getY() + keyCoords.get(i).getY());
         }
         body.add(prev);
-        normalizeCoords();
+        normalizeBodyCoords();
     }
 
     public Boolean isBumped(Coord checkCoord) {
@@ -176,10 +176,12 @@ public class Snake {
     public void move() {
         body.remove(body.size() - 1);
         Coord head = new Coord(body.get(0).getX() + Direction.directionToCoord(headDirection).getX(), body.get(0).getY() + Direction.directionToCoord(headDirection).getY());
-        body.add(0, head.normalize(config.getWidth(), config.getHeight()));
+        head = head.normalize(config.getWidth(), config.getHeight());
+        body.add(0, head);
+        this.head = head;
     }
 
-    public void normalizeCoords() {
+    public void normalizeBodyCoords() {
         body.forEach(coord -> coord.normalize(config.getWidth(), config.getHeight()));
     }
 

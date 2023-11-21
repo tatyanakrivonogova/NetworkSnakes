@@ -73,8 +73,6 @@ public class GameState {
         return foods;
     }
 
-    public HashMap<Coord, CoordType> getCoordsTypeMap() { return coordsTypeMap; }
-
     public int getStateOrder() {
         return stateOrder;
     }
@@ -82,6 +80,7 @@ public class GameState {
     public HashMap<Integer, Snake> getSnakes() {
         return snakes;
     }
+    public int getSnakesCount() { return snakes.size(); }
 
     public void addPlayer(GamePlayer player) {
         this.players.put(player.getId(), player);
@@ -125,7 +124,12 @@ public class GameState {
         return Optional.of(emptyCoords.get(random.nextInt(emptyCoords.size() - 1)));
     }
 
-    Optional<Coord> findEmptySquare() {
+    public boolean hasEmptySquare() {
+        Optional<Coord> emptySquare = findEmptySquare();
+        return emptySquare.isPresent();
+    }
+
+    private Optional<Coord> findEmptySquare() {
         ArrayList<Coord> emptyCoords = getEmptyCoords();
         if (getEmptyCoords().isEmpty()) return Optional.empty();
         for (Coord c: emptyCoords) {

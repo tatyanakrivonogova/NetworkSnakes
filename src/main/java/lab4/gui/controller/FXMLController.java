@@ -109,13 +109,14 @@ public class FXMLController implements IController {
     }
 
     public void onJoinPlayerButtonClick() {
-        String selcetedString = mastersList.getSelectionModel().getSelectedItem();
-        if (selcetedString == null) {
+        String selectedString = mastersList.getSelectionModel().getSelectedItem();
+        if (selectedString == null) {
             view.showError("Select game and click again");
         }
         model.setLocalPlayerRole(NodeRole.NORMAL);
         model.setLocalPlayerName(playerNameField.getText());
-        node.chooseGame(new String(selcetedString.getBytes(), 11, selcetedString.length() - 11),
+        assert selectedString != null;
+        node.chooseGame(new String(selectedString.getBytes(), "Game name: ".length(), selectedString.length() - "Game name: ".length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.NORMAL);
         joinPlayerButton.setDisable(true);
         joinViewerButton.setDisable(true);
@@ -123,9 +124,14 @@ public class FXMLController implements IController {
 
     public void onJoinViewerButtonClick() {
         String selectedString = mastersList.getSelectionModel().getSelectedItem();
+        if (selectedString == null) {
+            view.showError("Select game and click again");
+        }
         model.setLocalPlayerRole(NodeRole.VIEWER);
         model.setLocalPlayerName(playerNameField.getText());
-        node.chooseGame(new String(selectedString.getBytes(), 11, selectedString.length() - 11),
+        System.out.println(selectedString);
+        assert selectedString != null;
+        node.chooseGame(new String(selectedString.getBytes(), "Game name: ".length(), selectedString.length() - "Game name: ".length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.VIEWER);
         joinViewerButton.setDisable(true);
         joinPlayerButton.setDisable(true);
