@@ -17,7 +17,6 @@ public class MulticastReceiver {
     private final MulticastSocket socket;
 
     public MulticastReceiver(InetAddress multicastAddress, int multicastPort) throws IOException {
-
         this.multicastAddress = multicastAddress;
         socket = new MulticastSocket(multicastPort);
         socket.joinGroup(multicastAddress);

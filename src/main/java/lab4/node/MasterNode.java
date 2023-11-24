@@ -71,7 +71,7 @@ public class MasterNode implements IMasterNode {
         announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
             try {
                 sendAnnouncement();
-                logger.info("Announcement successful");
+                //logger.info("Announcement successful");
             } catch (IOException e) {
                 logger.error("Master node.sendAnnouncement() exception: " + e);
                 throw new RuntimeException(e);
@@ -97,8 +97,8 @@ public class MasterNode implements IMasterNode {
     }
 
     private void sendState() {
-        System.out.println("Players count: " + gameState.getPlayers().size());
-        System.out.println("Viewers count: " + viewers.size());
+//        System.out.println("Players count: " + gameState.getPlayers().size());
+//        System.out.println("Viewers count: " + viewers.size());
         gameState.getPlayers().forEach((id, player) -> {
             if (id == localId) {
                 SnakesProto.GameMessage stateMsg = MessageBuilder.buildStateMessage(StateMapper.toProtobuf(gameState, localId), -1);
@@ -121,9 +121,6 @@ public class MasterNode implements IMasterNode {
             Direction newDir = DirectionMapper.toClass(headDirection);
             assert newDir != null;
             snakeDirections.put(snake, newDir);
-//            if (snake.canTurn(newDir)) {
-//                snake.setHeadDirection(newDir);
-//            }
         } else {
             logger.error("Steer msg for snake that isn't alive");
         }
@@ -137,6 +134,7 @@ public class MasterNode implements IMasterNode {
 
     @Override
     public void ackNewDeputy(InetAddress deputyAddress, int deputyPort) {
+        System.out.println("master: ack new deputy");
         if (deputyAckAwaiting) {
             this.deputyIp = deputyAddress;
             this.deputyPort = deputyPort;
@@ -150,44 +148,45 @@ public class MasterNode implements IMasterNode {
         GameAnnouncement gameAnnouncement = new GameAnnouncement(gameState.getPlayers(), gameState.getConfig(), checkCanJoin(), gameState.getConfig().getGameName(), localId);
         List<SnakesProto.GameAnnouncement> announcementList = new ArrayList<>();
         announcementList.add(AnnouncementMapper.toProtobuf(gameAnnouncement));
-        logger.info("Master: local id: " + localId);
         SnakesProto.GameMessage announcementMessage = MessageBuilder.buildAnnouncementMessageBroadcast(announcementList, localId);
         transferProtocol.send(announcementMessage, multicastAddress, MULTICAST_PORT);
     }
 
-    @Override
-    public void sendAnnouncement(InetAddress receiverIp, int receiverPort) {
-        GameAnnouncement gameAnnouncement = new GameAnnouncement(gameState.getPlayers(), gameState.getConfig(), checkCanJoin(), gameState.getConfig().getGameName(), localId);
-        List<SnakesProto.GameAnnouncement> announcementList = new ArrayList<>();
-        announcementList.add(AnnouncementMapper.toProtobuf(gameAnnouncement));
-        SnakesProto.GameMessage message = MessageBuilder.buildAnnouncementMessage(announcementList, 0, localId);
-        transferProtocol.send(message, receiverIp, receiverPort);
-    }
+//    @Override
+//    public void sendAnnouncement(InetAddress receiverIp, int receiverPort) {
+//        GameAnnouncement gameAnnouncement = new GameAnnouncement(gameState.getPlayers(), gameState.getConfig(), checkCanJoin(), gameState.getConfig().getGameName(), localId);
+//        List<SnakesProto.GameAnnouncement> announcementList = new ArrayList<>();
+//        announcementList.add(AnnouncementMapper.toProtobuf(gameAnnouncement));
+//        SnakesProto.GameMessage message = MessageBuilder.buildAnnouncementMessage(announcementList, 0, localId);
+//        transferProtocol.send(message, receiverIp, receiverPort);
+//    }
 
     private Boolean checkCanJoin() {
         return gameState.hasEmptySquare();
     }
 
     private void sendAck(long msgSeq, int senderId, int receiverId, InetAddress receiverIp, int receiverPort) {
+        //System.out.println("master send ack");
         transferProtocol.send(MessageBuilder.buildAckMessage(msgSeq, senderId, receiverId), receiverIp, receiverPort);
     }
 
     private void sendRoleChangeToDeputy(InetAddress receiverIp, int receiverPort) {
         SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
-                SnakesProto.NodeRole.DEPUTY, transferProtocol.getNextMessageId());
+                SnakesProto.NodeRole.DEPUTY, localId, transferProtocol.getNextMessageId());
         deputyAckAwaiting = true;
         transferProtocol.send(msg, receiverIp, receiverPort);
+        System.out.println("master: send role change to deputy");
     }
 
     private void sendRoleChangeToViewer(GamePlayer player) {
         if (player.getIsLocal()) {
             SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
-                    SnakesProto.NodeRole.VIEWER, -1);
+                    SnakesProto.NodeRole.VIEWER, localId, -1);
             viewers.add(player);
             transferProtocol.sendMyself(msg);
         } else {
             SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
-                    SnakesProto.NodeRole.VIEWER, transferProtocol.getNextMessageId());
+                    SnakesProto.NodeRole.VIEWER, localId, transferProtocol.getNextMessageId());
             viewers.add(player);
             transferProtocol.send(msg, player.getIpAddress(), player.getPort());
         }
@@ -214,6 +213,7 @@ public class MasterNode implements IMasterNode {
                     RoleMapper.toClass(requestedRole), TypeMapper.toClass(playerType), 0);
             gameState.addPlayer(newPlayer);
             sendAck(msgSeq, localId, newPlayerId, newPlayerIp, newPlayerPort);
+            System.out.println("Ack sent" + localId + " " + newPlayerId + " " + newPlayerIp + " " + newPlayerPort);
             if (gameState.getPlayersCount() == 2) {
                 sendRoleChangeToDeputy(newPlayerIp, newPlayerPort);
             }

@@ -22,6 +22,7 @@ public interface INode {
     Boolean getJoinAwaiting();
 
     InetAddress getMasterIp();
+    int getMasterId();
 
     void setLocalId(int id);
 
@@ -50,4 +51,6 @@ public interface INode {
     void moveDown();
 
     void shutdown();
+
+    void handlePing(InetAddress senderIp, int senderPort);
 }

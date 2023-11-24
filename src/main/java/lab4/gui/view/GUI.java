@@ -13,6 +13,8 @@ import lab4.game.snake.Snake;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GUI implements IView {
     private static final int CELL_SIZE = 20;
@@ -21,6 +23,7 @@ public class GUI implements IView {
     private final ListView<String> mastersView;
     private final Label rightStatus;
     private final Label leftStatus;
+    private boolean isUpdated = false;
 
     public GUI(Canvas field, ListView<String> mastersList, Label rightStatus, Label leftStatus) {
         this.field = field;
@@ -32,11 +35,23 @@ public class GUI implements IView {
 
     @Override
     public void updateGameList(AbstractMap<Long, GameAnnouncement> games) {
+        Set<String> setNew = new HashSet<>(mastersView.getItems());
+        Set<String> setOld = new HashSet<>();
+        for (GameAnnouncement a : games.values()) setOld.add(a.getGameName());
+        Set<String> larger = setNew.size() > setOld.size() ? setNew : setOld;
+        Set<String> smaller = larger.equals(setNew) ? setOld : setNew;
+        larger.removeAll(smaller);
+        if (larger.isEmpty()) {
+            isUpdated = false;
+            return;
+        }
+
         activeGames.clear();
         var iterator = games.values().iterator();
         for (int i = 0; i < games.size(); i++) {
             activeGames.add(iterator.next().getGameName());
         }
+        isUpdated = true;
     }
 
     @Override
@@ -46,9 +61,12 @@ public class GUI implements IView {
 
     @Override
     public void drawNewGameList() {
-        mastersView.getItems().clear();
-        for (String gameName : activeGames) {
-            mastersView.getItems().add("Game name: " + gameName);
+        if (isUpdated) {
+            mastersView.getItems().clear();
+            for (String gameName : activeGames) {
+                mastersView.getItems().add(gameName);
+            }
+            isUpdated = false;
         }
     }
 

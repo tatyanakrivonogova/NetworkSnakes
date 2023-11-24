@@ -75,7 +75,7 @@ public class TransferProtocol implements Runnable, Publisher {
                 SentMessage toSendMessage = toSend.get(sendingNumber);
                 if (toSendMessage != null) {
                     try {
-                        sendMessage(toSendMessage);
+                        sendUnicastMessageWithAck(toSendMessage);
                         sendingNumber++;
                     } catch (IOException e) {
                         logger.error("TransferProtocol.run(): " + e);
@@ -84,7 +84,7 @@ public class TransferProtocol implements Runnable, Publisher {
                 }
             }
             try {
-                receiveMessage();
+                receiveUnicastMessage();
             } catch (InterruptedIOException e) {
                 logger.error(e.getMessage());
                 break;
@@ -99,7 +99,7 @@ public class TransferProtocol implements Runnable, Publisher {
             return;
         }
         SentMessage newMessage;
-        if (message.hasAck() || message.hasAnnouncement() || message.hasDiscover()) {
+        if (message.hasAck() || message.hasAnnouncement() || message.hasDiscover() || message.hasPing()) {
             try {
                 datagramChannel.send(message.toByteArray(), rcvAddress, rcvPort);
             } catch (IOException e) {
@@ -116,7 +116,7 @@ public class TransferProtocol implements Runnable, Publisher {
         notifySubscribers(new ReceivedMessage(message, null, 0));
     }
 
-    private void sendMessage(SentMessage message) throws IOException {
+    private void sendUnicastMessageWithAck(SentMessage message) throws IOException {
         try {
             timerMap.remove(message.getSeq());
             OneShootTimer timer = new OneShootTimer(ackTimeout, () -> {
@@ -134,7 +134,7 @@ public class TransferProtocol implements Runnable, Publisher {
         }
     }
 
-    private void receiveMessage() throws IOException {
+    private void receiveUnicastMessage() throws IOException {
         RawMessage rcvData = datagramChannel.receive();
         if (rcvData != null) {
             SnakesProto.GameMessage gameMessage = SnakesProto.GameMessage.parseFrom(rcvData.getMessage());
@@ -143,9 +143,22 @@ public class TransferProtocol implements Runnable, Publisher {
                 notifySubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort()));
             } else {
                 long seq = gameMessage.getMsgSeq();
-                if (gameMessage.hasAck()) { //!!!!!!!!!!!!!!!!!!!!!!!!!
+//                if (gameMessage.hasPing()) {
+//                    System.out.println("ping received");
+//                    ReceivedMessage rcvMessage = new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort());
+//                    if (!receivedMessages.containsKey(rcvData.getSenderAddress())) {
+//                        receivedMessages.put(rcvMessage.getSenderAddress(), new HashMap<>());
+//                    }
+//                    if (!receivedMessages.get(rcvMessage.getSenderAddress()).containsKey(seq)) {
+//                        receivedMessages.get(rcvMessage.getSenderAddress()).put(seq, rcvMessage);
+//                        transfer(seq, rcvMessage.getSenderAddress());
+//                    }
+//                }
+                if (gameMessage.hasAck()) {
+                    //System.out.println("ack received");
                     ackSentMessage(seq);
                 } else {
+                    //System.out.println("receive unicast message: send ack " + rcvData.getSenderAddress() + " " + rcvData.getSenderPort());
                     sendAck(seq, rcvData.getSenderAddress(), rcvData.getSenderPort());
                     ReceivedMessage rcvMessage = new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort());
                     if (!receivedMessages.containsKey(rcvData.getSenderAddress())) {
@@ -177,6 +190,7 @@ public class TransferProtocol implements Runnable, Publisher {
     }
 
     private void sendAck(long seq, InetAddress receiverAddress, int receiverPort) throws IOException {
+        //System.out.println("transfer protocol: send ack");
         SnakesProto.GameMessage message = MessageBuilder.buildAckMessage(seq, 0, 0);
         datagramChannel.send(message.toByteArray(), receiverAddress, receiverPort);
     }

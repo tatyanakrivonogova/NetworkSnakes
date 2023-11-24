@@ -16,6 +16,7 @@ public class DatagramSocketWrapper implements IDatagramChannel {
     public DatagramSocketWrapper(int timeout) throws SocketException {
         try {
             socket = new DatagramSocket();
+            System.out.println(socket.getLocalSocketAddress() + " " + socket.getLocalPort());
             socket.setSoTimeout(timeout);
         } catch (SocketException e) {
             logger.error("DatagramSocketWrapper constructor:" + e);

@@ -4,12 +4,16 @@ package lab4.messages;
 import lab4.proto.SnakesProto;
 
 import java.util.List;
+import java.util.function.DoubleToIntFunction;
 
 public class MessageBuilder {
+    private static int cnt = 1;
     public static SnakesProto.GameMessage buildPingMessage() {
+        System.out.println("build ping " + cnt);
         SnakesProto.GameMessage.PingMsg pingMsg = SnakesProto.GameMessage.newBuilder().getPing();
         return SnakesProto.GameMessage.newBuilder()
                 .setPing(pingMsg)
+                .setMsgSeq(1)
                 .build();
     }
 
@@ -94,7 +98,7 @@ public class MessageBuilder {
                 .build();
     }
 
-    public static SnakesProto.GameMessage buildRoleChangeMessage(SnakesProto.NodeRole senderRole, SnakesProto.NodeRole receiverRole, long seq) {
+    public static SnakesProto.GameMessage buildRoleChangeMessage(SnakesProto.NodeRole senderRole, SnakesProto.NodeRole receiverRole, int senderId, long seq) {
         SnakesProto.GameMessage.RoleChangeMsg roleChangeMsg = SnakesProto.GameMessage.newBuilder()
                 .getRoleChangeBuilder()
                 .setReceiverRole(receiverRole)
@@ -102,15 +106,8 @@ public class MessageBuilder {
                 .build();
         return SnakesProto.GameMessage.newBuilder()
                 .setRoleChange(roleChangeMsg)
+                .setSenderId(senderId)
                 .setMsgSeq(seq)
-                .build();
-    }
-
-    public static SnakesProto.GameMessage buildDiscoverMessage() {
-        SnakesProto.GameMessage.DiscoverMsg discoverMsg = SnakesProto.GameMessage.newBuilder()
-                .getDiscover();
-        return SnakesProto.GameMessage.newBuilder()
-                .setDiscover(discoverMsg)
                 .build();
     }
 }

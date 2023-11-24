@@ -2,9 +2,10 @@
 2. death of master node
 3. viewer (accepting by masterNode) !
 4. finishing of program
-5. receiving of announcements before start of game
+5. receiving of announcements before start of game !
 6. refactoring of master node, game model
 7. score panel on GUI
 8. validation of config
 9. scale of foods on GUI
 10. highlight own snake
+11. gui color

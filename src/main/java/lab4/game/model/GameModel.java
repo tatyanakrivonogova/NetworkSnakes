@@ -22,6 +22,7 @@ import publisher_subscriber.Subscriber;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.function.DoubleToIntFunction;
 
 public class GameModel implements IGameModel, Subscriber {
     private final static String MULTICAST_IP = "239.192.0.4";
@@ -106,7 +107,7 @@ public class GameModel implements IGameModel, Subscriber {
                 handleSteer(message.getGameMessage().getSteer(), message.getGameMessage().getSenderId());
                 break;
             case DISCOVER:
-                handleDiscover(message.getGameMessage().getDiscover(), message.getSenderAddress(), message.getSenderPort());
+//                handleDiscover(message.getGameMessage().getDiscover(), message.getSenderAddress(), message.getSenderPort());
                 break;
             case ROLE_CHANGE:
                 handleRoleChange(message.getGameMessage().getRoleChange(), message.getSenderAddress(), message.getSenderPort(), message.getGameMessage().getSenderId());
@@ -135,11 +136,11 @@ public class GameModel implements IGameModel, Subscriber {
     }
 
     private void handleAck(SnakesProto.GameMessage msg, InetAddress senderIp, int senderPort) {
-
         if (node.getIsMaster()) {
             masterNode.ackNewDeputy(senderIp, senderPort);
         } else {
             if (node.getJoinAwaiting()) {
+                System.out.println("node: join awaiting");
                 localPlayer.setId(msg.getReceiverId());
                 localPlayer.setPlayerType(PlayerType.HUMAN);
                 localPlayer.setScore(0);
@@ -156,7 +157,7 @@ public class GameModel implements IGameModel, Subscriber {
     }
 
     private void handlePing(SnakesProto.GameMessage.PingMsg msg, InetAddress senderIp, int senderPort) {
-
+        node.handlePing(senderIp, senderPort);
     }
 
     private void handleError(SnakesProto.GameMessage.ErrorMsg msg) {
@@ -173,15 +174,19 @@ public class GameModel implements IGameModel, Subscriber {
         }
     }
 
-    private void handleDiscover(SnakesProto.GameMessage.DiscoverMsg msg, InetAddress senderIp, int senderPort) {
-        if (localPlayer.getRole() == NodeRole.MASTER) {
-            masterNode.sendAnnouncement(senderIp, senderPort);
-        }
-    }
+//    private void handleDiscover(SnakesProto.GameMessage.DiscoverMsg msg, InetAddress senderIp, int senderPort) {
+//        if (localPlayer.getRole() == NodeRole.MASTER) {
+//            masterNode.sendAnnouncement(senderIp, senderPort);
+//        }
+//    }
 
     private void handleRoleChange(SnakesProto.GameMessage.RoleChangeMsg msg, InetAddress senderIp, int senderPort, int senderId) {
+        System.out.println("node: handle role change");
         if (msg.hasSenderRole()) {
+            System.out.println("sender role");
             if (msg.getSenderRole() == SnakesProto.NodeRole.MASTER) {
+                System.out.println("was: " + node.getMasterIp() + " " + node.getMasterPort() + " " + node.getMasterId());
+                System.out.println(senderIp + " " + senderPort + " " + senderId);
                 node.changeMaster(senderIp, senderPort, senderId);
             }
             if (msg.getSenderRole() == SnakesProto.NodeRole.VIEWER) {
@@ -191,8 +196,13 @@ public class GameModel implements IGameModel, Subscriber {
                     logger.error("Requested changing role to viewer, but node is not master");
                 }
             }
+            if (msg.getSenderRole() == SnakesProto.NodeRole.DEPUTY && msg.getReceiverRole() == SnakesProto.NodeRole.MASTER) {
+                System.out.println("change role to master");
+                changeRoleToMaster();
+            }
         }
         if (msg.hasReceiverRole()) {
+            System.out.println("receiver role");
             if (msg.getReceiverRole() == SnakesProto.NodeRole.VIEWER) {
                 if (senderIp == node.getMasterIp()) {
                     node.killSnake();

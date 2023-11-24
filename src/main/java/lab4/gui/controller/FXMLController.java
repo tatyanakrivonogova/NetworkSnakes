@@ -116,7 +116,7 @@ public class FXMLController implements IController {
         model.setLocalPlayerRole(NodeRole.NORMAL);
         model.setLocalPlayerName(playerNameField.getText());
         assert selectedString != null;
-        node.chooseGame(new String(selectedString.getBytes(), "Game name: ".length(), selectedString.length() - "Game name: ".length()),
+        node.chooseGame(new String(selectedString.getBytes(), 0, selectedString.length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.NORMAL);
         joinPlayerButton.setDisable(true);
         joinViewerButton.setDisable(true);
@@ -131,7 +131,7 @@ public class FXMLController implements IController {
         model.setLocalPlayerName(playerNameField.getText());
         System.out.println(selectedString);
         assert selectedString != null;
-        node.chooseGame(new String(selectedString.getBytes(), "Game name: ".length(), selectedString.length() - "Game name: ".length()),
+        node.chooseGame(new String(selectedString.getBytes(), 0, selectedString.length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.VIEWER);
         joinViewerButton.setDisable(true);
         joinPlayerButton.setDisable(true);
