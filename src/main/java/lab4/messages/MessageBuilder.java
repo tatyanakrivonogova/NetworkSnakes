@@ -4,16 +4,14 @@ package lab4.messages;
 import lab4.proto.SnakesProto;
 
 import java.util.List;
-import java.util.function.DoubleToIntFunction;
 
 public class MessageBuilder {
-    private static int cnt = 1;
+    private static int pingSeq = -1;
     public static SnakesProto.GameMessage buildPingMessage() {
-        System.out.println("build ping " + cnt);
         SnakesProto.GameMessage.PingMsg pingMsg = SnakesProto.GameMessage.newBuilder().getPing();
         return SnakesProto.GameMessage.newBuilder()
                 .setPing(pingMsg)
-                .setMsgSeq(1)
+                .setMsgSeq(pingSeq--)
                 .build();
     }
 
@@ -50,19 +48,19 @@ public class MessageBuilder {
                 .build();
     }
 
-    public static SnakesProto.GameMessage buildAnnouncementMessage(List<SnakesProto.GameAnnouncement> announcements, long seq, int masterId) {
-        SnakesProto.GameMessage.AnnouncementMsg announcementMsg = SnakesProto.GameMessage.newBuilder()
-                .getAnnouncementBuilder()
-                .addAllGames(announcements)
-                .build();
-        return SnakesProto.GameMessage.newBuilder()
-                .setAnnouncement(announcementMsg)
-                .setMsgSeq(seq)
-                .setSenderId(masterId)
-                .build();
-    }
+//    public static SnakesProto.GameMessage buildAnnouncementMessage(List<SnakesProto.GameAnnouncement> announcements, long seq, int masterId) {
+//        SnakesProto.GameMessage.AnnouncementMsg announcementMsg = SnakesProto.GameMessage.newBuilder()
+//                .getAnnouncementBuilder()
+//                .addAllGames(announcements)
+//                .build();
+//        return SnakesProto.GameMessage.newBuilder()
+//                .setAnnouncement(announcementMsg)
+//                .setMsgSeq(seq)
+//                .setSenderId(masterId)
+//                .build();
+//    }
 
-    public static SnakesProto.GameMessage buildAnnouncementMessageBroadcast(List<SnakesProto.GameAnnouncement> announcements, int masterId) {
+    public static SnakesProto.GameMessage buildAnnouncementMessage(List<SnakesProto.GameAnnouncement> announcements, int masterId) {
         SnakesProto.GameMessage.AnnouncementMsg announcementMsg = SnakesProto.GameMessage.newBuilder()
                 .getAnnouncementBuilder()
                 .addAllGames(announcements)

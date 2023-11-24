@@ -143,33 +143,29 @@ public class TransferProtocol implements Runnable, Publisher {
                 notifySubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort()));
             } else {
                 long seq = gameMessage.getMsgSeq();
-//                if (gameMessage.hasPing()) {
-//                    System.out.println("ping received");
-//                    ReceivedMessage rcvMessage = new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort());
-//                    if (!receivedMessages.containsKey(rcvData.getSenderAddress())) {
-//                        receivedMessages.put(rcvMessage.getSenderAddress(), new HashMap<>());
-//                    }
-//                    if (!receivedMessages.get(rcvMessage.getSenderAddress()).containsKey(seq)) {
-//                        receivedMessages.get(rcvMessage.getSenderAddress()).put(seq, rcvMessage);
-//                        transfer(seq, rcvMessage.getSenderAddress());
-//                    }
-//                }
-                if (gameMessage.hasAck()) {
-                    //System.out.println("ack received");
+                if (gameMessage.hasAck() && seq >= 0) {
+                    System.out.println("bad ack received " + seq);
                     ackSentMessage(seq);
                 } else {
-                    //System.out.println("receive unicast message: send ack " + rcvData.getSenderAddress() + " " + rcvData.getSenderPort());
-                    sendAck(seq, rcvData.getSenderAddress(), rcvData.getSenderPort());
-                    ReceivedMessage rcvMessage = new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort());
-                    if (!receivedMessages.containsKey(rcvData.getSenderAddress())) {
-                        receivedMessages.put(rcvMessage.getSenderAddress(), new HashMap<>());
+                    if (gameMessage.hasPing()) System.out.println("ping received");
+                    if (!gameMessage.hasAck()) {
+                        sendAck(seq, rcvData.getSenderAddress(), rcvData.getSenderPort());
                     }
-                    if (!receivedMessages.get(rcvMessage.getSenderAddress()).containsKey(seq)) {
-                        receivedMessages.get(rcvMessage.getSenderAddress()).put(seq, rcvMessage);
-                        transfer(seq, rcvMessage.getSenderAddress());
-                    }
+                    System.out.println("ack received " + seq);
+                    createMessageForTransfer(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort(), seq);
                 }
             }
+        }
+    }
+
+    private void createMessageForTransfer(SnakesProto.GameMessage gameMessage, InetAddress address, int port, long seq) {
+        ReceivedMessage rcvMessage = new ReceivedMessage(gameMessage, address, port);
+        if (!receivedMessages.containsKey(address)) {
+            receivedMessages.put(rcvMessage.getSenderAddress(), new HashMap<>());
+        }
+        if (!receivedMessages.get(rcvMessage.getSenderAddress()).containsKey(seq)) {
+            receivedMessages.get(rcvMessage.getSenderAddress()).put(seq, rcvMessage);
+            transfer(seq, rcvMessage.getSenderAddress());
         }
     }
 

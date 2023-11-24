@@ -22,7 +22,6 @@ import publisher_subscriber.Subscriber;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.function.DoubleToIntFunction;
 
 public class GameModel implements IGameModel, Subscriber {
     private final static String MULTICAST_IP = "239.192.0.4";
@@ -95,6 +94,7 @@ public class GameModel implements IGameModel, Subscriber {
                 handleJoin(message.getGameMessage().getJoin(), message.getSenderAddress(), message.getSenderPort(), message.getGameMessage().getMsgSeq());
                 break;
             case PING:
+                System.out.println("handle ping");
                 handlePing(message.getGameMessage().getPing(), message.getSenderAddress(), message.getSenderPort());
                 break;
             case ERROR:
@@ -136,6 +136,12 @@ public class GameModel implements IGameModel, Subscriber {
     }
 
     private void handleAck(SnakesProto.GameMessage msg, InetAddress senderIp, int senderPort) {
+        System.out.println("ack");
+        if (msg.getMsgSeq() < 0) {
+            System.out.println("ping ack");
+            node.handlePingAck();
+            return;
+        }
         if (node.getIsMaster()) {
             masterNode.ackNewDeputy(senderIp, senderPort);
         } else {

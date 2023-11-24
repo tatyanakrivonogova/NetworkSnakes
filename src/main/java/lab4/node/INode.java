@@ -53,4 +53,5 @@ public interface INode {
     void shutdown();
 
     void handlePing(InetAddress senderIp, int senderPort);
+    void handlePingAck();
 }
