@@ -22,6 +22,10 @@ public class MessageHandler implements IMessageHandler {
 
     @Override
     public void handleMessage(ReceivedMessage message) {
+        if (message.getSenderAddress() == model.getNode().getMasterIp() && message.getSenderPort() == model.getNode().getMasterPort()) {
+            model.getNode().setLastMessageFromMaster(System.currentTimeMillis());
+            System.out.println("**************************new message from master");
+        }
         switch (message.getGameMessage().getTypeCase()) {
             case ACK:
                 handleAck(message.getGameMessage(), message.getSenderAddress(), message.getSenderPort());
@@ -101,7 +105,7 @@ public class MessageHandler implements IMessageHandler {
     private void handleRoleChange(SnakesProto.GameMessage.RoleChangeMsg msg, InetAddress senderIp, int senderPort, int senderId) {
         System.out.println("node: handle role change");
         if (msg.hasSenderRole()) {
-            System.out.println("sender role");
+            System.out.println("sender role " + msg.getSenderRole());
             if (msg.getSenderRole() == SnakesProto.NodeRole.MASTER) {
                 System.out.println("was: " + model.getNode().getMasterIp() + " " + model.getNode().getMasterPort() + " " + model.getNode().getMasterId());
                 System.out.println(senderIp + " " + senderPort + " " + senderId);
@@ -120,7 +124,7 @@ public class MessageHandler implements IMessageHandler {
             }
         }
         if (msg.hasReceiverRole()) {
-            System.out.println("receiver role");
+            System.out.println("receiver role " + msg.getReceiverRole());
             if (msg.getReceiverRole() == SnakesProto.NodeRole.VIEWER) {
                 if (senderIp == model.getNode().getMasterIp()) {
                     model.getNode().killSnake();
@@ -141,8 +145,8 @@ public class MessageHandler implements IMessageHandler {
     private void changeRoleToMaster() {
         model.getLocalPlayer().setRole(NodeRole.MASTER);
         model.getNode().setIsMaster(true);
-        model.createMasterNode(model.getLocalPlayer().getId(), model.getNode().getGameConfig(), model.getLocalPlayer().getName(),
-                model.getLocalPlayer().getPlayerType(), model.getNode());
+        model.replaceMasterNode();
+        model.getMasterNode().run();
     }
 
     private void handleAnnouncement(SnakesProto.GameMessage.AnnouncementMsg msg, InetAddress senderIp, int senderPort, int senderId) {

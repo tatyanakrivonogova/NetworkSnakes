@@ -15,7 +15,7 @@ public class Snake {
     private final List<Coord> body;
     private Coord head;
     GameConfig config;
-    private final SnakeState snakeState;
+    private SnakeState snakeState;
     private int playerId;
     private Direction headDirection;
     private Boolean isDirectionUpdated;
@@ -56,6 +56,8 @@ public class Snake {
             logger.error("Snake constructor: Unable to find direction of snake");
         }
     }
+
+    public void setSnakeState(SnakeState state) { this.snakeState = state; }
 
     public void setDirectionUpdated(Boolean directionUpdated) {
         isDirectionUpdated = directionUpdated;
@@ -98,7 +100,8 @@ public class Snake {
     private void keyCoordsToBody(List<Coord> keyCoords) {
         Coord prev = keyCoords.get(0);
         for (int i = 1; i < keyCoords.size(); i++) {
-            body.addAll(createSnakePart(prev, keyCoords.get(i)));
+            List<Coord> coords = createSnakePart(prev, keyCoords.get(i));
+            if (coords != null) body.addAll(coords);
             prev = new Coord(prev.getX() + keyCoords.get(i).getX(), prev.getY() + keyCoords.get(i).getY());
         }
         body.add(prev);

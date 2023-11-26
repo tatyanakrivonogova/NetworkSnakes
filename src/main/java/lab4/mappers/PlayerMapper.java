@@ -11,13 +11,14 @@ public class PlayerMapper {
         try {
             return new GamePlayer(player.getName(),
                     player.getId(),
-                    InetAddress.getByName(player.getIpAddress()),
+                    InetAddress.getByName(player.getIpAddress().length() > 0 ? player.getIpAddress().substring(1) : player.getIpAddress()),
                     player.getPort(),
                     RoleMapper.toClass(player.getRole()),
                     TypeMapper.toClass(player.getType()),
                     player.getScore());
         } catch (Exception ignored) {
-            return new GamePlayer(player.getName(), player.getId(), null, TypeMapper.toClass(player.getType()), player.getScore());
+//            System.out.println(ignored);
+            return new GamePlayer(player.getName(), player.getId(), RoleMapper.toClass(player.getRole()), TypeMapper.toClass(player.getType()), player.getScore());
         }
     }
 

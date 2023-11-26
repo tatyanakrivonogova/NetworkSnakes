@@ -36,6 +36,10 @@ public class GameModel implements IGameModel {
         this.masterNode = new MasterNode(localId, config, playerName, type, node);
     }
     @Override
+    public void replaceMasterNode() {
+        this.masterNode = new MasterNode(localPlayer.getId(), node.getGameConfig(), node, node.getGameState());
+    }
+    @Override
     public INode getNode() { return node; }
     @Override
     public IMasterNode getMasterNode() { return masterNode; }

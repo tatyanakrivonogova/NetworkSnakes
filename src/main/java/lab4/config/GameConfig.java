@@ -5,8 +5,8 @@ public class GameConfig {
     private int height;
     private final int foodStatic;
     private int stateDelayMs;
-    private double probabilityForFood = 0.5;
-    private final String gameName;
+    private final double probabilityForFood = 0.5;
+    private String gameName;
 
     public GameConfig(int width, int height, int foodStatic, int stateDelayMs, String gameName) {
         this.width = width;
@@ -19,6 +19,8 @@ public class GameConfig {
     public String getGameName() {
         return gameName;
     }
+
+    public void setGameName(String name) { this.gameName = name; }
 
     public int getFoodStatic() {
         return foodStatic;

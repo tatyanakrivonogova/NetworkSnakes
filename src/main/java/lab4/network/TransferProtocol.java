@@ -9,8 +9,10 @@ import lab4.proto.SnakesProto;
 import lab4.timer.OneShootTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import publisher_subscriber.Publisher;
-import publisher_subscriber.Subscriber;
+import publisher_subscriber.ReceivePublisher;
+import publisher_subscriber.ReceiveSubscriber;
+import publisher_subscriber.TimeoutPublisher;
+import publisher_subscriber.TimeoutSubscriber;
 
 
 import java.io.IOException;
@@ -18,9 +20,10 @@ import java.io.InterruptedIOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class TransferProtocol implements Runnable, Publisher {
+public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPublisher {
     private static volatile TransferProtocol transferProtocolInstance;
     private static Thread thread;
     private final IDatagramChannel datagramChannel;
@@ -29,7 +32,9 @@ public class TransferProtocol implements Runnable, Publisher {
     private final ConcurrentHashMap<Long, SentMessage> toSend;
     private final ConcurrentHashMap<InetAddress, HashMap<Long, ReceivedMessage>> receivedMessages;
     private final ConcurrentHashMap<Long, OneShootTimer> timerMap;
-    private final ArrayList<Subscriber> subscribers = new ArrayList<>();
+    private final ConcurrentHashMap<SentMessage, Long> notAckedMessages;
+    private final ArrayList<ReceiveSubscriber> receiveSubscribers = new ArrayList<>();
+    private final ArrayList<TimeoutSubscriber> timeoutSubscribers = new ArrayList<>();
     private long nextMessageId;
     private long sendingNumber;
 
@@ -37,6 +42,7 @@ public class TransferProtocol implements Runnable, Publisher {
     private TransferProtocol() throws IOException {
         toSend = new ConcurrentHashMap<>();
         receivedMessages = new ConcurrentHashMap<>();
+        notAckedMessages = new ConcurrentHashMap<>();
         timerMap = new ConcurrentHashMap<>();
         datagramChannel = new DatagramSocketWrapper();
         sendingNumber = 1;
@@ -90,6 +96,11 @@ public class TransferProtocol implements Runnable, Publisher {
                 break;
             } catch (IOException ignored) {
             }
+            for (Map.Entry<SentMessage, Long> msg : notAckedMessages.entrySet()) {
+                if (System.currentTimeMillis() - msg.getValue() > 2L * ackTimeout) {
+                    notifyTimeoutSubscribers(msg.getKey().getReceiverAddress(), msg.getKey().getReceiverPort());
+                }
+            }
         }
     }
 
@@ -113,12 +124,11 @@ public class TransferProtocol implements Runnable, Publisher {
     }
 
     public void sendMyself(SnakesProto.GameMessage message) {
-        notifySubscribers(new ReceivedMessage(message, null, 0));
+        notifyReceiveSubscribers(new ReceivedMessage(message, null, 0));
     }
 
     private void sendUnicastMessageWithAck(SentMessage message) throws IOException {
         try {
-            System.out.println("timerMap " + timerMap.size());
             timerMap.remove(message.getSeq());
             OneShootTimer timer = new OneShootTimer(ackTimeout, () -> {
                 try {
@@ -130,7 +140,8 @@ public class TransferProtocol implements Runnable, Publisher {
             datagramChannel.send(message.getGameMessage().toByteArray(), message.getReceiverAddress(), message.getReceiverPort());
             timer.start();
             timerMap.put(message.getSeq(), timer);
-            System.out.println("timer map put");
+            notAckedMessages.put(message, System.currentTimeMillis());
+            System.out.println("new not acked messages: " + notAckedMessages.size());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -142,17 +153,15 @@ public class TransferProtocol implements Runnable, Publisher {
             SnakesProto.GameMessage gameMessage = SnakesProto.GameMessage.parseFrom(rcvData.getMessage());
 
             if ((gameMessage.hasAck() && gameMessage.getReceiverId() != 0) || gameMessage.hasAnnouncement()) {
-                notifySubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort()));
+                notifyReceiveSubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort()));
             } else {
                 long seq = gameMessage.getMsgSeq();
                 if (gameMessage.hasAck() && seq >= 0) {
                     ackSentMessage(seq);
                 } else {
-//                    if (gameMessage.hasPing()) System.out.println("ping received");
                     if (!gameMessage.hasAck()) {
                         sendAck(seq, rcvData.getSenderAddress(), rcvData.getSenderPort());
                     }
-//                    System.out.println("ack received " + seq);
                     createMessageForTransfer(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort(), seq);
                 }
             }
@@ -172,10 +181,14 @@ public class TransferProtocol implements Runnable, Publisher {
 
 
     private void transfer(long seq, InetAddress ip) {
-        notifySubscribers(receivedMessages.get(ip).get(seq));
+        notifyReceiveSubscribers(receivedMessages.get(ip).get(seq));
     }
 
     private void ackSentMessage(long seq) {
+        //notAckedMessages.get(seq);
+        for (SentMessage msg : notAckedMessages.keySet()) {
+             if (msg.getSeq() == seq) notAckedMessages.remove(msg);
+        }
         if (timerMap.get(seq) != null) {
             timerMap.get(seq).cancel();
         }
@@ -194,13 +207,22 @@ public class TransferProtocol implements Runnable, Publisher {
     }
 
     @Override
-    public void notifySubscribers(ReceivedMessage message) {
-        subscribers.forEach(subscriber -> subscriber.update(message));
+    public void notifyReceiveSubscribers(ReceivedMessage message) {
+        receiveSubscribers.forEach(subscriber -> subscriber.update(message));
+    }
+    @Override
+    public void notifyTimeoutSubscribers(InetAddress ip, int port) {
+        timeoutSubscribers.forEach(subscriber -> subscriber.update(ip, port));
     }
 
     @Override
-    public void addSubscriber(Subscriber subscriber) {
-        subscribers.add(subscriber);
+    public void addReceiveSubscriber(ReceiveSubscriber subscriber) {
+        receiveSubscribers.add(subscriber);
+    }
+
+    @Override
+    public void addTimeoutSubscriber(TimeoutSubscriber subscriber) {
+        timeoutSubscribers.add(subscriber);
     }
 
     public void shutdown() {

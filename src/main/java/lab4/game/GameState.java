@@ -165,6 +165,10 @@ public class GameState {
         }
     }
 
+    public void addFood(Coord c) {
+        foods.add(c);
+    }
+
     public void diedSnakeToFood(Snake snake) {
         for (Coord coord : snake.getBody()) {
             if (coord.equals(snake.getHead())) {

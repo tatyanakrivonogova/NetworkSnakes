@@ -6,7 +6,6 @@ import lab4.game.player.GamePlayer;
 import lab4.game.NodeRole;
 import lab4.game.player.PlayerType;
 import lab4.gui.view.IView;
-import lab4.messages.ReceivedMessage;
 
 
 public interface IGameController {
@@ -19,8 +18,6 @@ public interface IGameController {
     void startMasterNode(GameConfig config);
 
     void chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole);
-
-    void handleMessage(ReceivedMessage message);
 
     void moveUp();
 

@@ -16,10 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MasterNode implements IMasterNode {
@@ -35,10 +32,11 @@ public class MasterNode implements IMasterNode {
     private final ArrayList<Integer> diedPlayersId;
     private final HashMap<Snake, Direction> snakeDirections;
     private TransferProtocol transferProtocol;
-    private INode node;
+    private final INode node;
     private final InetAddress multicastAddress;
     private int currentId;
     private Boolean deputyAckAwaiting;
+    private int deputyId;
     private InetAddress deputyIp;
     private int deputyPort;
 
@@ -71,7 +69,7 @@ public class MasterNode implements IMasterNode {
         announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
             try {
                 sendAnnouncement();
-                //logger.info("Announcement successful");
+                logger.info("Announcement successful");
             } catch (IOException e) {
                 logger.error("Master node.sendAnnouncement() exception: " + e);
                 throw new RuntimeException(e);
@@ -82,6 +80,55 @@ public class MasterNode implements IMasterNode {
             sendState();
         });
         setFoods();
+    }
+
+    public MasterNode(int localId, GameConfig config, INode node, GameState gameState) {
+        this.node = node;
+        this.gameState = gameState;
+        HashSet<GamePlayer> viewers = new HashSet<>();
+        for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
+            if (p.getValue().getRole() == NodeRole.VIEWER) viewers.add(p.getValue());
+        }
+        this.viewers = viewers;
+        this.diedPlayersId = new ArrayList<>();
+        this.snakeDirections = new HashMap<>();
+        try {
+            this.multicastAddress = InetAddress.getByName(MULTICAST_IP);
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            this.transferProtocol = TransferProtocol.getTransferProtocolInstance();
+        } catch (IOException e) {
+            logger.error("Master node constructor: error while creating TransferProtocol instance: " + e);
+            logger.info("Shutdown...");
+            shutdown();
+        }
+        this.localId = localId;
+        this.currentId = 1;
+        for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet())
+            if (p.getKey() > this.currentId) this.currentId = p.getKey();
+        this.currentId++;
+
+        for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
+            System.out.println(p.getKey() + " " + p.getValue().getRole());
+
+        this.deputyAckAwaiting = false; //!!!
+        announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
+            try {
+                sendAnnouncement();
+                logger.info("Announcement successful");
+            } catch (IOException e) {
+                logger.error("Master node.sendAnnouncement() exception: " + e);
+                throw new RuntimeException(e);
+            }
+        });
+        stateSender = new InfiniteShootsTimer(config.getStateDelayMs(), () -> {
+            updateState();
+            sendState();
+        });
+        //setFoods(gameState.getFoods());
     }
 
     @Override
@@ -96,9 +143,15 @@ public class MasterNode implements IMasterNode {
         }
     }
 
+    private void setFoods(ArrayList<Coord> foods) {
+        for (Coord c : foods) gameState.addFood(c);
+    }
+
     private void sendState() {
-//        System.out.println("Players count: " + gameState.getPlayers().size());
-//        System.out.println("Viewers count: " + viewers.size());
+        System.out.println("sendState: **************************");
+        for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
+            System.out.println(p.getKey() + " " + p.getValue().getRole());
+        System.out.println("sendState: **************************");
         gameState.getPlayers().forEach((id, player) -> {
             if (id == localId) {
                 SnakesProto.GameMessage stateMsg = MessageBuilder.buildStateMessage(StateMapper.toProtobuf(gameState, localId), -1);
@@ -139,6 +192,7 @@ public class MasterNode implements IMasterNode {
             this.deputyIp = deputyAddress;
             this.deputyPort = deputyPort;
             deputyAckAwaiting = false;
+            gameState.getPlayers().get(deputyId).setRole(NodeRole.DEPUTY);
         } else {
             logger.error("Master node.ackNewDeputy(): ack hasn't been awaited, but received");
         }
@@ -199,12 +253,15 @@ public class MasterNode implements IMasterNode {
                 transferProtocol.send(message, newPlayerIp, newPlayerPort);
                 return;
             }
+            System.out.println("requested role " + requestedRole);
             GamePlayer newPlayer = new GamePlayer(playerName, newPlayerId, newPlayerIp, newPlayerPort,
                     RoleMapper.toClass(requestedRole), TypeMapper.toClass(playerType), 0);
+            System.out.println(newPlayer.getRole());
             gameState.addPlayer(newPlayer);
             sendAck(msgSeq, localId, newPlayerId, newPlayerIp, newPlayerPort);
             System.out.println("Ack sent" + localId + " " + newPlayerId + " " + newPlayerIp + " " + newPlayerPort);
             if (gameState.getPlayersCount() == 2) {
+                deputyId = newPlayerId;
                 sendRoleChangeToDeputy(newPlayerIp, newPlayerPort);
             }
         } else {

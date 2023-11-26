@@ -3,7 +3,9 @@ package lab4.node;
 import javafx.application.Platform;
 import lab4.config.GameConfig;
 import lab4.game.*;
+import lab4.game.player.GamePlayer;
 import lab4.game.player.PlayerType;
+import lab4.game.snake.SnakeState;
 import lab4.gui.view.IView;
 import lab4.mappers.*;
 import lab4.messages.MessageBuilder;
@@ -12,18 +14,19 @@ import lab4.proto.SnakesProto;
 import lab4.timer.InfiniteShootsTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import publisher_subscriber.TimeoutSubscriber;
 
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Node implements INode {
+public class Node implements INode, TimeoutSubscriber {
     private final static int IS_ALIVE_TIMEOUT = 1000;
     private final static int ANNOUNCEMENT_TIMEOUT = 1000;
-    private int stateDelay;
     Logger logger = LoggerFactory.getLogger(Node.class);
     private IView view;
     private TransferProtocol transferProtocol;
@@ -39,14 +42,13 @@ public class Node implements INode {
     private ConcurrentHashMap<Long, GameAnnouncement> mastersCollection;
     private final InfiniteShootsTimer announcementUpdater;
     private final InfiniteShootsTimer pingMasterSender;
-    private final int PING_DELAY = 1000;
-    private final int PING_TIMEOUT = PING_DELAY * 5;
-    private long lastPingReplyFromMaster;
+    private long lastMessageFromMaster;
 
     public Node(IView view) {
         try {
             this.view = view;
             this.transferProtocol = TransferProtocol.getTransferProtocolInstance();
+            transferProtocol.addTimeoutSubscriber(this);
             joinAwaiting = false;
             this.mastersCollection = new ConcurrentHashMap<>();
             isMaster = false;
@@ -58,17 +60,16 @@ public class Node implements INode {
         }
         this.announcementUpdater = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> Platform.runLater(view::drawNewGameList));
         announcementUpdater.start();
-        this.pingMasterSender = new InfiniteShootsTimer(PING_DELAY, () -> {
-            System.out.println("ping master " + masterIp + " " + masterPort + " by deputy");
-            if (System.currentTimeMillis() - lastPingReplyFromMaster > PING_TIMEOUT) {
+        this.pingMasterSender = new InfiniteShootsTimer(100, () -> {
+            //System.out.println("state delay ms: " + gameConfig.getStateDelayMs());
+            if (System.currentTimeMillis() - lastMessageFromMaster > 0.8 * gameConfig.getStateDelayMs()) {
                 System.out.println("master ping timeout");
-                SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
-                        SnakesProto.NodeRole.MASTER, localId, transferProtocol.getNextMessageId());
-                transferProtocol.sendMyself(msg);
-                return;
+                handleMasterDeath();
+            } else if ((System.currentTimeMillis() - lastMessageFromMaster) > (gameConfig.getStateDelayMs() / 10)) {
+                System.out.println("ping master " + masterIp + " " + masterPort + " " + gameConfig.getStateDelayMs());
+                SnakesProto.GameMessage pingMessage = MessageBuilder.buildPingMessage();
+                transferProtocol.send(pingMessage, masterIp, masterPort);
             }
-            SnakesProto.GameMessage pingMessage = MessageBuilder.buildPingMessage();
-            transferProtocol.send(pingMessage, masterIp, masterPort);
         });
     }
 
@@ -77,7 +78,10 @@ public class Node implements INode {
         this.localId = id;
     }
     @Override
-    public void setStateDelay(int delay) { this.stateDelay = delay; }
+    public void setLastMessageFromMaster(long time) {
+        lastMessageFromMaster = time;
+        System.out.println("setLastMessageFromMaster");
+    }
 
     @Override
     public void handleAnnouncement(List<SnakesProto.GameAnnouncement> activeGames, InetAddress senderIp, int senderPort, int senderId) {
@@ -135,7 +139,7 @@ public class Node implements INode {
     @Override
     public void handlePingAck() {
         if (isDeputy)
-            lastPingReplyFromMaster = System.currentTimeMillis();
+            lastMessageFromMaster = System.currentTimeMillis();
     }
 
     @Override
@@ -158,13 +162,13 @@ public class Node implements INode {
             transferProtocol.send(joinMessage, chosenGame.getMasterIp(), chosenGame.getMasterPort());
             joinAwaiting = true;
             gameConfig = chosenGame.getConfig();
+            gameConfig.setGameName(gameName);
             masterId = chosenGame.getMasterId();
             announcementUpdater.cancel();
             logger.info("Master was set " + chosenGame.getMasterId());
         } else {
             logger.error("Chosen game is null");
         }
-
     }
 
     @Override
@@ -176,10 +180,18 @@ public class Node implements INode {
     public void setGameConfig(GameConfig config) {
         this.gameConfig = config;
     }
+    @Override
+    public GameState getGameState() { return gameState; }
 
     @Override
     public Boolean getIsMaster() {
         return isMaster;
+    }
+    @Override
+    public void removeMaster() {
+        System.out.println("remove master: " + masterId);
+        gameState.getPlayers().remove(masterId);
+        gameState.getSnakes().get(masterId).setSnakeState(SnakeState.ZOMBIE);
     }
 
     @Override
@@ -203,7 +215,7 @@ public class Node implements INode {
     @Override
     public void changeRoleToDeputy() {
         isDeputy = true;
-        lastPingReplyFromMaster = System.currentTimeMillis();
+        lastMessageFromMaster = System.currentTimeMillis();
         pingMasterSender.start();
         ackNewRole();
     }
@@ -216,6 +228,8 @@ public class Node implements INode {
     @Override
     public void handleState(SnakesProto.GameState state) {
         this.gameState = StateMapper.toClass(state, localId, gameConfig);
+        for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
+            System.out.println(p.getKey() + " " + p.getValue().getRole());
         Platform.runLater(() -> view.repaintField(gameState, gameConfig, localId));
     }
 
@@ -265,7 +279,28 @@ public class Node implements INode {
     public Boolean getJoinAwaiting() {
         return joinAwaiting;
     }
+
+    private void handleMasterDeath() {
+        if (isMaster) {
+            System.out.println("i am master and i am dead !!!!!!!!!!!!!!!!!!");
+        } else if (isDeputy) {
+            System.out.println("i am deputy and master is dead");
+            removeMaster();
+            SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
+                    SnakesProto.NodeRole.MASTER, localId, transferProtocol.getNextMessageId());
+            transferProtocol.sendMyself(msg);
+        } else {
+            System.out.println("i am normal and master is dead");
+            //change master's ip and port on deputy's
+            //resend not acked messages
+        }
+    }
     @Override
     public void shutdown() {
+    }
+
+    @Override
+    public void update(InetAddress ip, int port) {
+        System.out.println("timeout subscriber: " + ip + " " + port);
     }
 }

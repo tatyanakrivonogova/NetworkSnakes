@@ -1,6 +1,7 @@
 package lab4.node;
 
 import lab4.config.GameConfig;
+import lab4.game.GameState;
 import lab4.game.NodeRole;
 import lab4.game.player.PlayerType;
 import lab4.proto.SnakesProto;
@@ -36,13 +37,15 @@ public interface INode {
 
     Boolean getIsMaster();
 
+    void removeMaster();
     void setIsMaster(Boolean isMaster);
 
     GameConfig getGameConfig();
 
     void setGameConfig(GameConfig config);
+    GameState getGameState();
 
-    void setStateDelay(int delay);
+    void setLastMessageFromMaster(long time);
 
     void moveUp();
 

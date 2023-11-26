@@ -15,12 +15,12 @@ import lab4.network.MulticastReceiver;
 import lab4.network.TransferProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import publisher_subscriber.Subscriber;
+import publisher_subscriber.ReceiveSubscriber;
 
 import java.io.IOException;
 import java.net.InetAddress;
 
-public class GameController implements IGameController, Subscriber {
+public class GameController implements IGameController, ReceiveSubscriber {
     private final static String MULTICAST_IP = "239.192.0.4";
     private final static int MULTICAST_PORT = 9192;
     private final Logger logger = LoggerFactory.getLogger(GameController.class);
@@ -35,7 +35,7 @@ public class GameController implements IGameController, Subscriber {
         messageHandler = new MessageHandler(this, model);
         try {
             transferProtocol = TransferProtocol.getTransferProtocolInstance();
-            transferProtocol.addSubscriber(this);
+            transferProtocol.addReceiveSubscriber(this);
 
             InetAddress multicastAddress = InetAddress.getByName(MULTICAST_IP);
             multicastReceiver = new MulticastReceiver(multicastAddress, MULTICAST_PORT);
@@ -43,7 +43,7 @@ public class GameController implements IGameController, Subscriber {
             disposable = multicastReceiver.getMulticastFlowable()
                     .subscribeOn(Schedulers.io())
                     .observeOn(FxSchedulers.get())
-                    .subscribe(this::handleMessage);
+                    .subscribe(messageHandler::handleMessage);
         } catch (IOException e) {
             logger.error("GameModel constructor: " + e);
             logger.info("Shutdown...");
@@ -59,7 +59,6 @@ public class GameController implements IGameController, Subscriber {
     @Override
     public void createNode(IView view) {
         model.createNode(view);
-        //node = new Node(view);
     }
     @Override
     public void startNode(GamePlayer player, Boolean isMaster, GameConfig config) {
@@ -73,17 +72,12 @@ public class GameController implements IGameController, Subscriber {
         transferProtocol.setTimeout(config.getStateDelayMs());
         model.setConfig(config);
         model.createMasterNode(1, config, model.getLocalPlayer().getName(), model.getLocalPlayer().getPlayerType(), model.getNode());
-        //masterNode = new MasterNode(1, config, localPlayer.getName(), localPlayer.getPlayerType(), node);
         model.getMasterNode().run();
     }
 
     @Override
     public void chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
         model.getNode().chooseGame(gameName, playerType, playerName, requestedRole);
-    }
-    @Override
-    public void handleMessage(ReceivedMessage message) {
-        messageHandler.handleMessage(message);
     }
 
     @Override
@@ -114,7 +108,7 @@ public class GameController implements IGameController, Subscriber {
 
     @Override
     public void update(ReceivedMessage message) {
-        handleMessage(message);
+        messageHandler.handleMessage(message);
     }
 
     @Override

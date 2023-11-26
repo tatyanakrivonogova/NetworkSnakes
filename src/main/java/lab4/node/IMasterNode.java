@@ -18,7 +18,5 @@ public interface IMasterNode {
 
     void ackNewDeputy(InetAddress deputyAddress, int deputyPort);
 
-//    void sendAnnouncement(InetAddress receiverIp, int receiverPort);
-
     void shutdown();
 }
