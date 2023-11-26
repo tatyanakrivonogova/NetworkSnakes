@@ -1,8 +1,10 @@
-package lab4.game.model;
+package lab4.game.controller;
 
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.disposables.Disposable;
 import lab4.config.GameConfig;
+import lab4.game.model.GameModel;
+import lab4.game.model.IGameModel;
 import lab4.game.player.GamePlayer;
 import lab4.game.NodeRole;
 import lab4.game.player.PlayerType;
@@ -11,10 +13,6 @@ import lab4.javafx.FxSchedulers;
 import lab4.messages.ReceivedMessage;
 import lab4.network.MulticastReceiver;
 import lab4.network.TransferProtocol;
-import lab4.node.IMasterNode;
-import lab4.node.INode;
-import lab4.node.MasterNode;
-import lab4.node.Node;
 import lab4.proto.SnakesProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,21 +25,20 @@ public class GameController implements IGameController, Subscriber {
     private final static String MULTICAST_IP = "239.192.0.4";
     private final static int MULTICAST_PORT = 9192;
     private final Logger logger = LoggerFactory.getLogger(GameController.class);
-    private GameConfig config;
-    private INode node;
-    private IMasterNode masterNode;
+    private final IGameModel model;
     private TransferProtocol transferProtocol;
-    private GamePlayer localPlayer;
     private MulticastReceiver multicastReceiver;
     private Disposable disposable;
 
     public GameController() {
+        model = new GameModel();
         try {
             transferProtocol = TransferProtocol.getTransferProtocolInstance();
             transferProtocol.addSubscriber(this);
+
             InetAddress multicastAddress = InetAddress.getByName(MULTICAST_IP);
             multicastReceiver = new MulticastReceiver(multicastAddress, MULTICAST_PORT);
-            localPlayer = new GamePlayer();
+
             disposable = multicastReceiver.getMulticastFlowable()
                     .subscribeOn(Schedulers.io())
                     .observeOn(FxSchedulers.get())
@@ -55,31 +52,33 @@ public class GameController implements IGameController, Subscriber {
     }
 
     public void setGameConfig(GameConfig config) {
-        this.config = config;
+        model.setConfig(config);
         transferProtocol.setTimeout(config.getStateDelayMs() / 10);
     }
     @Override
     public void createNode(IView view) {
-        node = new Node(view);
+        model.createNode(view);
+        //node = new Node(view);
     }
     @Override
     public void startNode(GamePlayer player, Boolean isMaster, GameConfig config) {
-        if (config != null) node.setGameConfig(config);
-        node.setLocalId(player.getId());
-        node.setIsMaster(isMaster);
-        this.localPlayer = player;
+        if (config != null) model.setConfig(config);
+        model.getNode().setLocalId(player.getId());
+        model.getNode().setIsMaster(isMaster);
+        model.setLocalPlayer(player);
     }
     @Override
     public void startMasterNode(GameConfig config) {
         transferProtocol.setTimeout(config.getStateDelayMs());
-        node.setGameConfig(config);
-        masterNode = new MasterNode(1, config, localPlayer.getName(), localPlayer.getPlayerType(), node);
-        masterNode.run();
+        model.setConfig(config);
+        model.createMasterNode(1, config, model.getLocalPlayer().getName(), model.getLocalPlayer().getPlayerType(), model.getNode());
+        //masterNode = new MasterNode(1, config, localPlayer.getName(), localPlayer.getPlayerType(), node);
+        model.getMasterNode().run();
     }
 
     @Override
     public void chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
-        node.chooseGame(gameName, playerType, playerName, requestedRole);
+        model.getNode().chooseGame(gameName, playerType, playerName, requestedRole);
     }
     @Override
     public void handleMessage(ReceivedMessage message) {
@@ -118,28 +117,28 @@ public class GameController implements IGameController, Subscriber {
 
     @Override
     public void moveUp() {
-        node.moveUp();
+        model.getNode().moveUp();
     }
 
     @Override
     public void moveDown() {
-        node.moveDown();
+        model.getNode().moveDown();
     }
 
     @Override
     public void moveLeft() {
-        node.moveLeft();
+        model.getNode().moveLeft();
     }
 
     @Override
     public void moveRight() {
-        node.moveRight();
+        model.getNode().moveRight();
     }
 
 
     @Override
-    public GamePlayer getLocalPlayer() {
-        return localPlayer;
+    public NodeRole getLocalPlayerRole() {
+        return model.getLocalPlayer().getRole();
     }
 
     @Override
@@ -149,54 +148,54 @@ public class GameController implements IGameController, Subscriber {
 
     @Override
     public void setLocalPlayerName(String name) {
-        localPlayer.setName(name);
+        model.getLocalPlayer().setName(name);
     }
 
     @Override
     public void setLocalPlayerRole(NodeRole role) {
-        localPlayer.setRole(role);
+        model.getLocalPlayer().setRole(role);
     }
 
     private void handleAck(SnakesProto.GameMessage msg, InetAddress senderIp, int senderPort) {
         if (msg.getMsgSeq() < 0) {
-            node.handlePingAck();
+            model.getNode().handlePingAck();
             return;
         }
-        if (node.getIsMaster()) {
-            masterNode.ackNewDeputy(senderIp, senderPort);
+        if (model.getNode().getIsMaster()) {
+            model.getMasterNode().ackNewDeputy(senderIp, senderPort);
         } else {
-            if (node.getJoinAwaiting()) {
+            if (model.getNode().getJoinAwaiting()) {
                 System.out.println("node: join awaiting");
-                localPlayer.setId(msg.getReceiverId());
-                localPlayer.setPlayerType(PlayerType.HUMAN);
-                localPlayer.setScore(0);
-                startNode(localPlayer, false, null);
-                node.handleAck(senderIp, senderPort, msg.getReceiverId(), msg.getSenderId());
+                model.getLocalPlayer().setId(msg.getReceiverId());
+                model.getLocalPlayer().setPlayerType(PlayerType.HUMAN);
+                model.getLocalPlayer().setScore(0);
+                startNode(model.getLocalPlayer(), false, null);
+                model.getNode().handleAck(senderIp, senderPort, msg.getReceiverId(), msg.getSenderId());
             } else logger.error("Node didn't request joining, but ack received");
         }
     }
 
     private void handleJoin(SnakesProto.GameMessage.JoinMsg msg, InetAddress senderIp, int senderPort, long seq) {
-        if (node.getIsMaster()) {
-            masterNode.handleJoin(seq, msg.getGameName(), msg.getPlayerName(), msg.getPlayerType(), msg.getRequestedRole(), senderIp, senderPort);
+        if (model.getNode().getIsMaster()) {
+            model.getMasterNode().handleJoin(seq, msg.getGameName(), msg.getPlayerName(), msg.getPlayerType(), msg.getRequestedRole(), senderIp, senderPort);
         }
     }
 
     private void handlePing(SnakesProto.GameMessage.PingMsg msg, InetAddress senderIp, int senderPort) {
-        node.handlePing(senderIp, senderPort);
+        model.getNode().handlePing(senderIp, senderPort);
     }
 
     private void handleError(SnakesProto.GameMessage.ErrorMsg msg) {
-        node.handleErrorMessage(msg.getErrorMessage());
+        model.getNode().handleErrorMessage(msg.getErrorMessage());
     }
 
     private void handleState(SnakesProto.GameMessage.StateMsg msg, InetAddress senderIp, int senderPort) {
-        node.handleState(msg.getState());
+        model.getNode().handleState(msg.getState());
     }
 
     private void handleSteer(SnakesProto.GameMessage.SteerMsg msg, int senderId) {
-        if (localPlayer.getRole() == NodeRole.MASTER) {
-            masterNode.handleSteer(msg.getDirection(), senderId);
+        if (model.getLocalPlayer().getRole() == NodeRole.MASTER) {
+            model.getMasterNode().handleSteer(msg.getDirection(), senderId);
         }
     }
 
@@ -205,13 +204,13 @@ public class GameController implements IGameController, Subscriber {
         if (msg.hasSenderRole()) {
             System.out.println("sender role");
             if (msg.getSenderRole() == SnakesProto.NodeRole.MASTER) {
-                System.out.println("was: " + node.getMasterIp() + " " + node.getMasterPort() + " " + node.getMasterId());
+                System.out.println("was: " + model.getNode().getMasterIp() + " " + model.getNode().getMasterPort() + " " + model.getNode().getMasterId());
                 System.out.println(senderIp + " " + senderPort + " " + senderId);
-                node.changeMaster(senderIp, senderPort, senderId);
+                model.getNode().changeMaster(senderIp, senderPort, senderId);
             }
             if (msg.getSenderRole() == SnakesProto.NodeRole.VIEWER) {
-                if (localPlayer.getRole() == NodeRole.MASTER) {
-                    masterNode.handleRoleChangeToViewer(senderIp, senderPort, senderId);
+                if (model.getLocalPlayer().getRole() == NodeRole.MASTER) {
+                    model.getMasterNode().handleRoleChangeToViewer(senderIp, senderPort, senderId);
                 } else {
                     logger.error("Requested changing role to viewer, but node is not master");
                 }
@@ -224,34 +223,36 @@ public class GameController implements IGameController, Subscriber {
         if (msg.hasReceiverRole()) {
             System.out.println("receiver role");
             if (msg.getReceiverRole() == SnakesProto.NodeRole.VIEWER) {
-                if (senderIp == node.getMasterIp()) {
-                    node.killSnake();
+                if (senderIp == model.getNode().getMasterIp()) {
+                    model.getNode().killSnake();
                 } else {
                     logger.error("Kill snake command from not-master node");
                 }
             }
             if (msg.getReceiverRole() == SnakesProto.NodeRole.DEPUTY) {
-                node.changeRoleToDeputy();
+                model.getNode().changeRoleToDeputy();
             }
-            if ((msg.getReceiverRole() == SnakesProto.NodeRole.MASTER) && (senderIp == node.getMasterIp()) && (senderPort == node.getMasterPort())) {
+            if ((msg.getReceiverRole() == SnakesProto.NodeRole.MASTER) && (senderIp == model.getNode().getMasterIp())
+                    && (senderPort == model.getNode().getMasterPort())) {
                 changeRoleToMaster();
             }
         }
     }
 
     private void changeRoleToMaster() {
-        localPlayer.setRole(NodeRole.MASTER);
-        node.setIsMaster(true);
-        masterNode = new MasterNode(localPlayer.getId(), node.getGameConfig(), localPlayer.getName(), localPlayer.getPlayerType(), node);
+        model.getLocalPlayer().setRole(NodeRole.MASTER);
+        model.getNode().setIsMaster(true);
+        model.createMasterNode(model.getLocalPlayer().getId(), model.getNode().getGameConfig(), model.getLocalPlayer().getName(),
+                model.getLocalPlayer().getPlayerType(), model.getNode());
     }
 
     private void handleAnnouncement(SnakesProto.GameMessage.AnnouncementMsg msg, InetAddress senderIp, int senderPort, int senderId) {
-        node.handleAnnouncement(msg.getGamesList(), senderIp, senderPort, senderId);
+        model.getNode().handleAnnouncement(msg.getGamesList(), senderIp, senderPort, senderId);
     }
 
     public void shutdown() {
-        if (masterNode != null) {
-            masterNode.shutdown();
+        if (model.getMasterNode() != null) {
+            model.getMasterNode().shutdown();
         }
         disposable.dispose();
         multicastReceiver.shutdown();

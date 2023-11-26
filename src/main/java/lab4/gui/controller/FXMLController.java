@@ -6,8 +6,8 @@ import javafx.scene.control.*;
 import javafx.scene.input.KeyEvent;
 import lab4.config.GameConfig;
 import lab4.game.*;
-import lab4.game.model.GameController;
-import lab4.game.model.IGameController;
+import lab4.game.controller.GameController;
+import lab4.game.controller.IGameController;
 import lab4.game.player.GamePlayer;
 import lab4.game.player.PlayerType;
 import lab4.gui.view.GUI;
@@ -72,7 +72,7 @@ public class FXMLController implements IController {
     }
 
     public void handleKeyboard(KeyEvent keyEvent) {
-        if (!gameController.getLocalPlayer().getRole().equals(NodeRole.VIEWER)) {
+        if (!gameController.getLocalPlayerRole().equals(NodeRole.VIEWER)) {
             switch (keyEvent.getCode()) {
                 case W -> gameController.moveUp();
                 case S -> gameController.moveDown();

@@ -1,4 +1,4 @@
-package lab4.game.model;
+package lab4.game.controller;
 
 
 import lab4.config.GameConfig;
@@ -7,7 +7,6 @@ import lab4.game.NodeRole;
 import lab4.game.player.PlayerType;
 import lab4.gui.view.IView;
 import lab4.messages.ReceivedMessage;
-import lab4.node.INode;
 
 
 public interface IGameController {
@@ -37,9 +36,6 @@ public interface IGameController {
 
     void setLocalPlayerRole(NodeRole role);
 
-    GamePlayer getLocalPlayer();
-
-
-
+    NodeRole getLocalPlayerRole();
 
 }
