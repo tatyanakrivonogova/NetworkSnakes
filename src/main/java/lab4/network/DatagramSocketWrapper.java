@@ -13,14 +13,23 @@ public class DatagramSocketWrapper implements IDatagramChannel {
     private final DatagramSocket socket;
     private final Logger logger = LoggerFactory.getLogger(DatagramSocketWrapper.class);
 
-    public DatagramSocketWrapper(int timeout) throws SocketException {
+    public DatagramSocketWrapper() throws SocketException {
         try {
             socket = new DatagramSocket();
             System.out.println(socket.getLocalSocketAddress() + " " + socket.getLocalPort());
-            socket.setSoTimeout(timeout);
+            socket.setSoTimeout(100);
         } catch (SocketException e) {
             logger.error("DatagramSocketWrapper constructor:" + e);
             throw e;
+        }
+    }
+
+    @Override
+    public void setSocketTimeout(int timeout) {
+        try {
+            socket.setSoTimeout(timeout);
+        } catch (SocketException e) {
+            logger.error("DatagramSocketWrapper.setSocketTimeout: " + e);
         }
     }
 

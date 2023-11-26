@@ -24,9 +24,8 @@ public class TransferProtocol implements Runnable, Publisher {
     private static volatile TransferProtocol transferProtocolInstance;
     private static Thread thread;
     private final IDatagramChannel datagramChannel;
-    private final int rcvTimeout = 20;
     private final Logger logger = LoggerFactory.getLogger(TransferProtocol.class);
-    private long ackTimeout;
+    private int ackTimeout;
     private final ConcurrentHashMap<Long, SentMessage> toSend;
     private final ConcurrentHashMap<InetAddress, HashMap<Long, ReceivedMessage>> receivedMessages;
     private final ConcurrentHashMap<Long, OneShootTimer> timerMap;
@@ -39,7 +38,7 @@ public class TransferProtocol implements Runnable, Publisher {
         toSend = new ConcurrentHashMap<>();
         receivedMessages = new ConcurrentHashMap<>();
         timerMap = new ConcurrentHashMap<>();
-        datagramChannel = new DatagramSocketWrapper(rcvTimeout);
+        datagramChannel = new DatagramSocketWrapper();
         sendingNumber = 1;
         nextMessageId = 0;
     }
@@ -59,8 +58,9 @@ public class TransferProtocol implements Runnable, Publisher {
         return transferProtocolInstance;
     }
 
-    public void provideStateDelay(int stateDelayMs) {
+    public void setTimeout(int stateDelayMs) {
         ackTimeout = stateDelayMs / 10;
+        datagramChannel.setSocketTimeout(stateDelayMs / 10);
     }
 
     public long getNextMessageId() {
@@ -118,6 +118,7 @@ public class TransferProtocol implements Runnable, Publisher {
 
     private void sendUnicastMessageWithAck(SentMessage message) throws IOException {
         try {
+            System.out.println("timerMap " + timerMap.size());
             timerMap.remove(message.getSeq());
             OneShootTimer timer = new OneShootTimer(ackTimeout, () -> {
                 try {
@@ -129,6 +130,7 @@ public class TransferProtocol implements Runnable, Publisher {
             datagramChannel.send(message.getGameMessage().toByteArray(), message.getReceiverAddress(), message.getReceiverPort());
             timer.start();
             timerMap.put(message.getSeq(), timer);
+            System.out.println("timer map put");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -139,19 +141,18 @@ public class TransferProtocol implements Runnable, Publisher {
         if (rcvData != null) {
             SnakesProto.GameMessage gameMessage = SnakesProto.GameMessage.parseFrom(rcvData.getMessage());
 
-            if ((gameMessage.hasAck() && gameMessage.getReceiverId() != 0) || gameMessage.hasAnnouncement() || gameMessage.hasDiscover()) {
+            if ((gameMessage.hasAck() && gameMessage.getReceiverId() != 0) || gameMessage.hasAnnouncement()) {
                 notifySubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort()));
             } else {
                 long seq = gameMessage.getMsgSeq();
                 if (gameMessage.hasAck() && seq >= 0) {
-                    System.out.println("bad ack received " + seq);
                     ackSentMessage(seq);
                 } else {
-                    if (gameMessage.hasPing()) System.out.println("ping received");
+//                    if (gameMessage.hasPing()) System.out.println("ping received");
                     if (!gameMessage.hasAck()) {
                         sendAck(seq, rcvData.getSenderAddress(), rcvData.getSenderPort());
                     }
-                    System.out.println("ack received " + seq);
+//                    System.out.println("ack received " + seq);
                     createMessageForTransfer(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort(), seq);
                 }
             }
@@ -179,6 +180,7 @@ public class TransferProtocol implements Runnable, Publisher {
             timerMap.get(seq).cancel();
         }
         timerMap.remove(seq);
+        System.out.println("timer map remove");
         if (toSend.get(seq) != null) {
             toSend.get(seq).ack();
             toSend.remove(seq);

@@ -42,6 +42,8 @@ public interface INode {
 
     void setGameConfig(GameConfig config);
 
+    void setStateDelay(int delay);
+
     void moveUp();
 
     void moveLeft();

@@ -1,11 +1,14 @@
 1. move snake due to the last steerMsg !
-2. death of master node
+2. death of master node ! for deputy
 3. viewer (accepting by masterNode) !
 4. finishing of program
 5. receiving of announcements before start of game !
 6. refactoring of master node, game model
 7. score panel on GUI
 8. validation of config
-9. scale of foods on GUI
-10. highlight own snake
-11. gui color
+9. scale of field
+10. highlight own snake !
+11. gui color !
+12. warning about fx versions !
+13. check scores
+14. add config params for chose of game

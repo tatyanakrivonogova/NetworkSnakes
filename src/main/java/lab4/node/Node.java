@@ -21,8 +21,9 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Node implements INode {
-    private final long IS_ALIVE_TIMEOUT = 1100;
+    private final static int IS_ALIVE_TIMEOUT = 1000;
     private final static int ANNOUNCEMENT_TIMEOUT = 1000;
+    private int stateDelay;
     Logger logger = LoggerFactory.getLogger(Node.class);
     private IView view;
     private TransferProtocol transferProtocol;
@@ -58,12 +59,13 @@ public class Node implements INode {
         this.announcementUpdater = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> Platform.runLater(view::drawNewGameList));
         announcementUpdater.start();
         this.pingMasterSender = new InfiniteShootsTimer(PING_DELAY, () -> {
-            System.out.println("ping master " + masterIp + " " + masterPort);
+            System.out.println("ping master " + masterIp + " " + masterPort + " by deputy");
             if (System.currentTimeMillis() - lastPingReplyFromMaster > PING_TIMEOUT) {
                 System.out.println("master ping timeout");
-                SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.DEPUTY,
+                SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
                         SnakesProto.NodeRole.MASTER, localId, transferProtocol.getNextMessageId());
                 transferProtocol.sendMyself(msg);
+                return;
             }
             SnakesProto.GameMessage pingMessage = MessageBuilder.buildPingMessage();
             transferProtocol.send(pingMessage, masterIp, masterPort);
@@ -74,6 +76,8 @@ public class Node implements INode {
     public void setLocalId(int id) {
         this.localId = id;
     }
+    @Override
+    public void setStateDelay(int delay) { this.stateDelay = delay; }
 
     @Override
     public void handleAnnouncement(List<SnakesProto.GameAnnouncement> activeGames, InetAddress senderIp, int senderPort, int senderId) {
@@ -93,12 +97,7 @@ public class Node implements INode {
     }
     @Override
     public void handlePing(InetAddress senderIp, int senderPort) {
-        System.out.println("handle ping " + senderIp + " " + senderPort);
-        if (isDeputy && senderIp == masterIp && senderPort == masterPort) {
-            lastPingReplyFromMaster = System.currentTimeMillis();
-        }
-        //SnakesProto.GameMessage pingMessage = MessageBuilder.buildPingMessage();
-        //transferProtocol.send(pingMessage, senderIp, senderPort);
+
     }
 
     @Override

@@ -148,25 +148,15 @@ public class MasterNode implements IMasterNode {
         GameAnnouncement gameAnnouncement = new GameAnnouncement(gameState.getPlayers(), gameState.getConfig(), checkCanJoin(), gameState.getConfig().getGameName(), localId);
         List<SnakesProto.GameAnnouncement> announcementList = new ArrayList<>();
         announcementList.add(AnnouncementMapper.toProtobuf(gameAnnouncement));
-        SnakesProto.GameMessage announcementMessage = MessageBuilder.buildAnnouncementMessageBroadcast(announcementList, localId);
+        SnakesProto.GameMessage announcementMessage = MessageBuilder.buildAnnouncementMessage(announcementList, localId);
         transferProtocol.send(announcementMessage, multicastAddress, MULTICAST_PORT);
     }
-
-//    @Override
-//    public void sendAnnouncement(InetAddress receiverIp, int receiverPort) {
-//        GameAnnouncement gameAnnouncement = new GameAnnouncement(gameState.getPlayers(), gameState.getConfig(), checkCanJoin(), gameState.getConfig().getGameName(), localId);
-//        List<SnakesProto.GameAnnouncement> announcementList = new ArrayList<>();
-//        announcementList.add(AnnouncementMapper.toProtobuf(gameAnnouncement));
-//        SnakesProto.GameMessage message = MessageBuilder.buildAnnouncementMessage(announcementList, 0, localId);
-//        transferProtocol.send(message, receiverIp, receiverPort);
-//    }
 
     private Boolean checkCanJoin() {
         return gameState.hasEmptySquare();
     }
 
     private void sendAck(long msgSeq, int senderId, int receiverId, InetAddress receiverIp, int receiverPort) {
-        //System.out.println("master send ack");
         transferProtocol.send(MessageBuilder.buildAckMessage(msgSeq, senderId, receiverId), receiverIp, receiverPort);
     }
 

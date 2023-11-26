@@ -6,17 +6,15 @@ import javafx.scene.control.*;
 import javafx.scene.input.KeyEvent;
 import lab4.config.GameConfig;
 import lab4.game.*;
-import lab4.game.model.GameModel;
-import lab4.game.model.IGameModel;
+import lab4.game.model.GameController;
+import lab4.game.model.IGameController;
 import lab4.game.player.GamePlayer;
 import lab4.game.player.PlayerType;
 import lab4.gui.view.GUI;
 import lab4.gui.view.IView;
-import lab4.node.INode;
 
 public class FXMLController implements IController {
-    IGameModel model;
-    INode node;
+    IGameController gameController;
     IView view;
     @FXML
     private Canvas field;
@@ -55,7 +53,7 @@ public class FXMLController implements IController {
     private Boolean isGameStarted = false;
 
     public FXMLController() {
-        model = new GameModel();
+        gameController = new GameController();
     }
 
     @Override
@@ -69,17 +67,17 @@ public class FXMLController implements IController {
         gameNameField.textProperty().addListener((observable, oldValue, newValue) -> {
             startMasterNodeButton.setDisable("".equals(newValue));
         });
-        model.createNode(view);
-        node = model.getNode();
+        gameController.createNode(view);
+        //node = model.getNode();
     }
 
     public void handleKeyboard(KeyEvent keyEvent) {
-        if (!model.getLocalPlayer().getRole().equals(NodeRole.VIEWER)) {
+        if (!gameController.getLocalPlayer().getRole().equals(NodeRole.VIEWER)) {
             switch (keyEvent.getCode()) {
-                case W -> node.moveUp();
-                case S -> node.moveDown();
-                case A -> node.moveLeft();
-                case D -> node.moveRight();
+                case W -> gameController.moveUp();
+                case S -> gameController.moveDown();
+                case A -> gameController.moveLeft();
+                case D -> gameController.moveRight();
             }
         }
     }
@@ -98,9 +96,12 @@ public class FXMLController implements IController {
         joinPlayerButton.setDisable(true);
         joinViewerButton.setDisable(true);
 
-        model.startNode(new GamePlayer(playerName, 1, NodeRole.MASTER, PlayerType.HUMAN, 0), true);
-        model.startMasterNode(new GameConfig((int) widthSlider.getValue(), (int) heightSlider.getValue(),
-                (int) foodsSlider.getValue(), (int) delaySlider.getValue(), gameNameField.getText()));
+
+        GameConfig config = new GameConfig((int) widthSlider.getValue(), (int) heightSlider.getValue(),
+                (int) foodsSlider.getValue(), (int) delaySlider.getValue(), gameNameField.getText());
+        gameController.setGameConfig(config);
+        gameController.startNode(new GamePlayer(playerName, 1, NodeRole.MASTER, PlayerType.HUMAN, 0), true, config);
+        gameController.startMasterNode(config);
         isGameStarted = true;
     }
 
@@ -113,10 +114,10 @@ public class FXMLController implements IController {
         if (selectedString == null) {
             view.showError("Select game and click again");
         }
-        model.setLocalPlayerRole(NodeRole.NORMAL);
-        model.setLocalPlayerName(playerNameField.getText());
+        gameController.setLocalPlayerRole(NodeRole.NORMAL);
+        gameController.setLocalPlayerName(playerNameField.getText());
         assert selectedString != null;
-        node.chooseGame(new String(selectedString.getBytes(), 0, selectedString.length()),
+        gameController.chooseGame(new String(selectedString.getBytes(), 0, selectedString.length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.NORMAL);
         joinPlayerButton.setDisable(true);
         joinViewerButton.setDisable(true);
@@ -127,11 +128,11 @@ public class FXMLController implements IController {
         if (selectedString == null) {
             view.showError("Select game and click again");
         }
-        model.setLocalPlayerRole(NodeRole.VIEWER);
-        model.setLocalPlayerName(playerNameField.getText());
+        gameController.setLocalPlayerRole(NodeRole.VIEWER);
+        gameController.setLocalPlayerName(playerNameField.getText());
         System.out.println(selectedString);
         assert selectedString != null;
-        node.chooseGame(new String(selectedString.getBytes(), 0, selectedString.length()),
+        gameController.chooseGame(new String(selectedString.getBytes(), 0, selectedString.length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.VIEWER);
         joinViewerButton.setDisable(true);
         joinPlayerButton.setDisable(true);
@@ -140,6 +141,6 @@ public class FXMLController implements IController {
     @Override
     public void stop() {
         view.shutdown();
-        model.shutdown();
+        gameController.shutdown();
     }
 }
