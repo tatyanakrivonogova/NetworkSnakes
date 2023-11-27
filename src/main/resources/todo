@@ -11,4 +11,7 @@
 11. gui color !
 12. warning about fx versions !
 13. check scores
-14. add config params for chose of game
+14. add config params for choice of game
+15. snakes grow after master death, scores is zero
+16. exception in DatagramSocketWrapper
+17. death of snake in the beginning

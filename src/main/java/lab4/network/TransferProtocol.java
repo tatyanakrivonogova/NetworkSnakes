@@ -18,9 +18,8 @@ import publisher_subscriber.TimeoutSubscriber;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.net.InetSocketAddress;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPublisher {
@@ -30,7 +29,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
     private final Logger logger = LoggerFactory.getLogger(TransferProtocol.class);
     private int ackTimeout;
     private final ConcurrentHashMap<Long, SentMessage> toSend;
-    private final ConcurrentHashMap<InetAddress, HashMap<Long, ReceivedMessage>> receivedMessages;
+    private final ConcurrentHashMap<InetSocketAddress, HashMap<Long, ReceivedMessage>> receivedMessages;
     private final ConcurrentHashMap<Long, OneShootTimer> timerMap;
     private final ConcurrentHashMap<SentMessage, Long> notAckedMessages;
     private final ArrayList<ReceiveSubscriber> receiveSubscribers = new ArrayList<>();
@@ -82,6 +81,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
                 if (toSendMessage != null) {
                     try {
                         sendUnicastMessageWithAck(toSendMessage);
+                        //System.out.println("sent message " + sendingNumber);
                         sendingNumber++;
                     } catch (IOException e) {
                         logger.error("TransferProtocol.run(): " + e);
@@ -99,6 +99,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
             for (Map.Entry<SentMessage, Long> msg : notAckedMessages.entrySet()) {
                 if (System.currentTimeMillis() - msg.getValue() > 2L * ackTimeout) {
                     notifyTimeoutSubscribers(msg.getKey().getReceiverAddress(), msg.getKey().getReceiverPort());
+                    notAckedMessages.remove(msg.getKey());
                 }
             }
         }
@@ -141,7 +142,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
             timer.start();
             timerMap.put(message.getSeq(), timer);
             notAckedMessages.put(message, System.currentTimeMillis());
-            System.out.println("new not acked messages: " + notAckedMessages.size());
+            //System.out.println("new not acked messages: " + notAckedMessages.size());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -149,8 +150,10 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
 
     private void receiveUnicastMessage() throws IOException {
         RawMessage rcvData = datagramChannel.receive();
+        //System.out.println("receive message: " + rcvData);
         if (rcvData != null) {
             SnakesProto.GameMessage gameMessage = SnakesProto.GameMessage.parseFrom(rcvData.getMessage());
+            if (gameMessage.hasJoin()) System.out.println("join###############################");
 
             if ((gameMessage.hasAck() && gameMessage.getReceiverId() != 0) || gameMessage.hasAnnouncement()) {
                 notifyReceiveSubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort()));
@@ -169,19 +172,21 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
     }
 
     private void createMessageForTransfer(SnakesProto.GameMessage gameMessage, InetAddress address, int port, long seq) {
+        InetSocketAddress inetSocketAddress = new InetSocketAddress(address, port);
         ReceivedMessage rcvMessage = new ReceivedMessage(gameMessage, address, port);
-        if (!receivedMessages.containsKey(address)) {
-            receivedMessages.put(rcvMessage.getSenderAddress(), new HashMap<>());
+        for (InetSocketAddress a : receivedMessages.keySet()) System.out.println(a);
+        if (!receivedMessages.containsKey(inetSocketAddress)) {
+            receivedMessages.put(inetSocketAddress, new HashMap<>());
         }
-        if (!receivedMessages.get(rcvMessage.getSenderAddress()).containsKey(seq)) {
-            receivedMessages.get(rcvMessage.getSenderAddress()).put(seq, rcvMessage);
-            transfer(seq, rcvMessage.getSenderAddress());
+        if (!receivedMessages.get(inetSocketAddress).containsKey(seq)) {
+            receivedMessages.get(inetSocketAddress).put(seq, rcvMessage);
+            transfer(seq, rcvMessage.getSenderAddress(), rcvMessage.getSenderPort());
         }
     }
 
 
-    private void transfer(long seq, InetAddress ip) {
-        notifyReceiveSubscribers(receivedMessages.get(ip).get(seq));
+    private void transfer(long seq, InetAddress ip, int port) {
+        notifyReceiveSubscribers(receivedMessages.get(new InetSocketAddress(ip, port)).get(seq));
     }
 
     private void ackSentMessage(long seq) {
@@ -193,7 +198,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
             timerMap.get(seq).cancel();
         }
         timerMap.remove(seq);
-        System.out.println("timer map remove");
+
         if (toSend.get(seq) != null) {
             toSend.get(seq).ack();
             toSend.remove(seq);

@@ -5,6 +5,7 @@ import lab4.config.GameConfig;
 import lab4.game.*;
 import lab4.game.player.GamePlayer;
 import lab4.game.player.PlayerType;
+import lab4.game.snake.Snake;
 import lab4.game.snake.SnakeState;
 import lab4.gui.view.IView;
 import lab4.mappers.*;
@@ -14,7 +15,6 @@ import lab4.proto.SnakesProto;
 import lab4.timer.InfiniteShootsTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import publisher_subscriber.TimeoutSubscriber;
 
 
 import java.io.IOException;
@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Node implements INode, TimeoutSubscriber {
+public class Node implements INode {
     private final static int IS_ALIVE_TIMEOUT = 1000;
     private final static int ANNOUNCEMENT_TIMEOUT = 1000;
     Logger logger = LoggerFactory.getLogger(Node.class);
@@ -48,7 +48,6 @@ public class Node implements INode, TimeoutSubscriber {
         try {
             this.view = view;
             this.transferProtocol = TransferProtocol.getTransferProtocolInstance();
-            transferProtocol.addTimeoutSubscriber(this);
             joinAwaiting = false;
             this.mastersCollection = new ConcurrentHashMap<>();
             isMaster = false;
@@ -80,7 +79,7 @@ public class Node implements INode, TimeoutSubscriber {
     @Override
     public void setLastMessageFromMaster(long time) {
         lastMessageFromMaster = time;
-        System.out.println("setLastMessageFromMaster");
+        //System.out.println("setLastMessageFromMaster");
     }
 
     @Override
@@ -152,7 +151,7 @@ public class Node implements INode, TimeoutSubscriber {
             }
         }
         if (chosenGame != null) {
-            System.out.println("Game is chosen");
+            System.out.println("Game is chosen " + chosenGame.getMasterIp() + " " + chosenGame.getMasterPort());
             SnakesProto.GameMessage joinMessage = MessageBuilder.buildJoinMessage(
                     TypeMapper.toProtobuf(playerType),
                     playerName,
@@ -191,7 +190,8 @@ public class Node implements INode, TimeoutSubscriber {
     public void removeMaster() {
         System.out.println("remove master: " + masterId);
         gameState.getPlayers().remove(masterId);
-        gameState.getSnakes().get(masterId).setSnakeState(SnakeState.ZOMBIE);
+        Snake masterSnake = gameState.getSnakes().get(masterId);
+        if (masterSnake != null) masterSnake.setSnakeState(SnakeState.ZOMBIE);
     }
 
     @Override
@@ -297,10 +297,5 @@ public class Node implements INode, TimeoutSubscriber {
     }
     @Override
     public void shutdown() {
-    }
-
-    @Override
-    public void update(InetAddress ip, int port) {
-        System.out.println("timeout subscriber: " + ip + " " + port);
     }
 }

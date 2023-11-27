@@ -5,6 +5,7 @@ import lab4.game.*;
 import lab4.game.player.GamePlayer;
 import lab4.game.player.PlayerType;
 import lab4.game.snake.Snake;
+import lab4.game.snake.SnakeState;
 import lab4.mappers.*;
 import lab4.messages.MessageBuilder;
 import lab4.network.TransferProtocol;
@@ -12,6 +13,7 @@ import lab4.proto.SnakesProto;
 import lab4.timer.InfiniteShootsTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import publisher_subscriber.TimeoutSubscriber;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -19,7 +21,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MasterNode implements IMasterNode {
+public class MasterNode implements IMasterNode, TimeoutSubscriber {
     private final static String MULTICAST_IP = "239.192.0.4";
     private final static int MULTICAST_PORT = 9192;
     private final static int ANNOUNCEMENT_TIMEOUT = 1000;
@@ -69,7 +71,7 @@ public class MasterNode implements IMasterNode {
         announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
             try {
                 sendAnnouncement();
-                logger.info("Announcement successful");
+                //logger.info("Announcement successful");
             } catch (IOException e) {
                 logger.error("Master node.sendAnnouncement() exception: " + e);
                 throw new RuntimeException(e);
@@ -111,8 +113,8 @@ public class MasterNode implements IMasterNode {
             if (p.getKey() > this.currentId) this.currentId = p.getKey();
         this.currentId++;
 
-        for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
-            System.out.println(p.getKey() + " " + p.getValue().getRole());
+        //for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
+            //System.out.println(p.getKey() + " " + p.getValue().getRole());
 
         this.deputyAckAwaiting = false; //!!!
         announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
@@ -133,6 +135,7 @@ public class MasterNode implements IMasterNode {
 
     @Override
     public void run() {
+        transferProtocol.addTimeoutSubscriber(this);
         announcementSender.start();
         stateSender.start();
     }
@@ -148,10 +151,9 @@ public class MasterNode implements IMasterNode {
     }
 
     private void sendState() {
-        System.out.println("sendState: **************************");
+        System.out.println("sendState players: " + gameState.getPlayers().size());
         for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
-            System.out.println(p.getKey() + " " + p.getValue().getRole());
-        System.out.println("sendState: **************************");
+            System.out.println("*" + p.getKey() + " " + p.getValue().getRole());
         gameState.getPlayers().forEach((id, player) -> {
             if (id == localId) {
                 SnakesProto.GameMessage stateMsg = MessageBuilder.buildStateMessage(StateMapper.toProtobuf(gameState, localId), -1);
@@ -239,6 +241,7 @@ public class MasterNode implements IMasterNode {
     @Override
     public void handleJoin(long msgSeq, String gameName, String playerName, SnakesProto.PlayerType playerType,
                            SnakesProto.NodeRole requestedRole, InetAddress newPlayerIp, int newPlayerPort) {
+        System.out.println("master node: handle join");
         if (requestedRole == SnakesProto.NodeRole.VIEWER) {
             GamePlayer newPlayer = new GamePlayer(playerName, -1, newPlayerIp, newPlayerPort,
                     RoleMapper.toClass(requestedRole), TypeMapper.toClass(playerType), 0);
@@ -304,6 +307,11 @@ public class MasterNode implements IMasterNode {
         diedPlayersId.forEach(id -> {
             gameState.getSnakes().remove(id);
             GamePlayer diedPlayer = gameState.getPlayers().get(id);
+            if (diedPlayer.getRole() == NodeRole.DEPUTY) {
+                deputyId = -1;
+                deputyIp = null;
+                deputyPort = -1;
+            }
             diedPlayer.setRole(NodeRole.VIEWER);
             sendRoleChangeToViewer(diedPlayer);
         });
@@ -327,5 +335,21 @@ public class MasterNode implements IMasterNode {
     public void shutdown() {
         announcementSender.cancel();
         stateSender.cancel();
+    }
+
+    @Override
+    public void update(InetAddress ip, int port) {
+        System.out.println("timeout subscriber: " + ip + " " + port);
+        //System.out.println(ip + " " + port);
+        for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
+            //System.out.println(p.getKey() + " " + p.getValue().getIpAddress() + " " + p.getValue().getPort());
+            if ((p.getValue().getIpAddress().equals(ip)) && (p.getValue().getPort() == port)) {
+                //System.out.println(gameState.getPlayers().size());
+                gameState.getPlayers().remove(p.getKey());
+                //System.out.println(gameState.getPlayers().size());
+                gameState.getSnakes().get(p.getKey()).setSnakeState(SnakeState.ZOMBIE);
+                System.out.println("player deleted");
+            }
+        }
     }
 }

@@ -24,13 +24,13 @@ public class MessageHandler implements IMessageHandler {
     public void handleMessage(ReceivedMessage message) {
         if (message.getSenderAddress() == model.getNode().getMasterIp() && message.getSenderPort() == model.getNode().getMasterPort()) {
             model.getNode().setLastMessageFromMaster(System.currentTimeMillis());
-            System.out.println("**************************new message from master");
         }
         switch (message.getGameMessage().getTypeCase()) {
             case ACK:
                 handleAck(message.getGameMessage(), message.getSenderAddress(), message.getSenderPort());
                 break;
             case JOIN:
+                System.out.println("join message&&&&&&&&&&&&&&&&&&&&&&&&&");
                 handleJoin(message.getGameMessage().getJoin(), message.getSenderAddress(), message.getSenderPort(), message.getGameMessage().getMsgSeq());
                 break;
             case PING:
