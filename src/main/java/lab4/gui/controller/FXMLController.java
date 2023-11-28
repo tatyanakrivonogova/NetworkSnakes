@@ -84,9 +84,17 @@ public class FXMLController implements IController {
 
     public void onStartMasterNodeButtonClick() {
         String playerName;
+        if (gameNameField.getText().length() > 10) {
+            view.showError("Too long name of game. Choose another one and click again");
+            return;
+        }
         if ("".equals(playerNameField.getText())) {
             playerName = "player1";
         } else {
+            if (playerNameField.getText().length() > 10) {
+                view.showError("Too long name of player. Choose another one and click again");
+                return;
+            }
             playerName = playerNameField.getText();
         }
         startMasterNodeButton.setDisable(true);
@@ -111,13 +119,17 @@ public class FXMLController implements IController {
 
     public void onJoinPlayerButtonClick() {
         String selectedString = mastersList.getSelectionModel().getSelectedItem();
+        System.out.println("selected string: " + selectedString);
         if (selectedString == null) {
             view.showError("Select game and click again");
+            return;
         }
         gameController.setLocalPlayerRole(NodeRole.NORMAL);
         gameController.setLocalPlayerName(playerNameField.getText());
         assert selectedString != null;
-        gameController.chooseGame(new String(selectedString.getBytes(), 0, selectedString.length()),
+        int index = selectedString.indexOf("(")-1;
+        String gameName = selectedString.substring(0, index);
+        gameController.chooseGame(new String(gameName.getBytes(), 0, gameName.length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.NORMAL);
         joinPlayerButton.setDisable(true);
         joinViewerButton.setDisable(true);

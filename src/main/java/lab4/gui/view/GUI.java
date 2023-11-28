@@ -35,7 +35,11 @@ public class GUI implements IView {
 
     @Override
     public void updateGameList(AbstractMap<Long, GameAnnouncement> games) {
-        Set<String> setNew = new HashSet<>(mastersView.getItems());
+
+        Set<String> setNew = new HashSet<>();
+        for (String s: mastersView.getItems()) {
+            setNew.add(s.substring(0, s.indexOf("(") - 1));
+        }
         Set<String> setOld = new HashSet<>();
         for (GameAnnouncement a : games.values()) setOld.add(a.getGameName());
         Set<String> larger = setNew.size() > setOld.size() ? setNew : setOld;
@@ -49,7 +53,10 @@ public class GUI implements IView {
         activeGames.clear();
         var iterator = games.values().iterator();
         for (int i = 0; i < games.size(); i++) {
-            activeGames.add(iterator.next().getGameName());
+            GameAnnouncement g = iterator.next();
+            activeGames.add(g.getGameName() + " (" + g.getPlayers().size() + " players, "
+                    + g.getConfig().getWidth() + "*" + g.getConfig().getHeight() + ", "
+                    + g.getConfig().getFoodStatic() + " + x" + ")");
         }
         isUpdated = true;
     }
