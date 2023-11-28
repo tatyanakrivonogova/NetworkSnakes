@@ -10,42 +10,47 @@ import java.net.InetAddress;
 import java.util.List;
 
 public interface INode {
+    GameConfig chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole);
+
+    Boolean getJoinAwaiting();
+
     void handleAnnouncement(List<SnakesProto.GameAnnouncement> announcements, InetAddress senderIp, int senderPort, int senderId);
 
     void handleAck(InetAddress masterIp, int masterPort, int localId, int masterId);
 
     void handleState(SnakesProto.GameState state);
 
-    void chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole);
-
     void handleErrorMessage(String error);
 
-    Boolean getJoinAwaiting();
+    void handlePing(InetAddress senderIp, int senderPort);
 
-    InetAddress getMasterIp();
-    int getMasterId();
+    void handlePingAck();
+
+    void setLastMessageFromMaster(long time);
 
     void setLocalId(int id);
 
+    InetAddress getMasterIp();
+
     int getMasterPort();
 
-    void changeRoleToDeputy();
+    int getMasterId();
 
     void changeMaster(InetAddress masterIp, int masterPort, int masterId);
 
-    void killSnake();
+    void changeRoleToDeputy();
+
+    void removeMaster();
 
     Boolean getIsMaster();
 
-    void removeMaster();
     void setIsMaster(Boolean isMaster);
 
     GameConfig getGameConfig();
 
     void setGameConfig(GameConfig config);
-    GameState getGameState();
 
-    void setLastMessageFromMaster(long time);
+    GameState getGameState();
 
     void moveUp();
 
@@ -56,7 +61,4 @@ public interface INode {
     void moveDown();
 
     void shutdown();
-
-    void handlePing(InetAddress senderIp, int senderPort);
-    void handlePingAck();
 }

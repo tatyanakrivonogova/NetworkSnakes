@@ -76,8 +76,8 @@ public class GameController implements IGameController, ReceiveSubscriber {
     }
 
     @Override
-    public void chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
-        model.getNode().chooseGame(gameName, playerType, playerName, requestedRole);
+    public GameConfig chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
+        return model.getNode().chooseGame(gameName, playerType, playerName, requestedRole);
     }
 
     @Override

@@ -17,7 +17,7 @@ public interface IGameController {
 
     void startMasterNode(GameConfig config);
 
-    void chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole);
+    GameConfig chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole);
 
     void moveUp();
 

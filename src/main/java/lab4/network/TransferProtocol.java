@@ -217,7 +217,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
     }
     @Override
     public void notifyTimeoutSubscribers(InetAddress ip, int port) {
-        timeoutSubscribers.forEach(subscriber -> subscriber.update(ip, port));
+        timeoutSubscribers.forEach(subscriber -> subscriber.updateTimeout(ip, port));
     }
 
     @Override

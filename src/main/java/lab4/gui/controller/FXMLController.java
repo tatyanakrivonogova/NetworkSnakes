@@ -50,6 +50,7 @@ public class FXMLController implements IController {
     private Button joinPlayerButton;
     @FXML
     private Button joinViewerButton;
+
     private Boolean isGameStarted = false;
 
     public FXMLController() {
@@ -97,6 +98,10 @@ public class FXMLController implements IController {
             }
             playerName = playerNameField.getText();
         }
+        if (foodsSlider.getValue() > widthSlider.getValue() * heightSlider.getValue() - 2 - 1) {
+            view.showError("Too big foods value. Change and click again");
+            return;
+        }
         startMasterNodeButton.setDisable(true);
         gameNameField.setEditable(false);
         playerNameField.setEditable(false);
@@ -126,13 +131,25 @@ public class FXMLController implements IController {
         }
         gameController.setLocalPlayerRole(NodeRole.NORMAL);
         gameController.setLocalPlayerName(playerNameField.getText());
-        assert selectedString != null;
         int index = selectedString.indexOf("(")-1;
         String gameName = selectedString.substring(0, index);
-        gameController.chooseGame(new String(gameName.getBytes(), 0, gameName.length()),
+        GameConfig config = gameController.chooseGame(new String(gameName.getBytes(), 0, gameName.length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.NORMAL);
+        widthSlider.setValue(config.getWidth());
+        heightSlider.setValue(config.getHeight());
+        foodsSlider.setValue(config.getFoodStatic());
+        delaySlider.setValue(config.getStateDelayMs());
+        gameNameField.setText(config.getGameName());
+
+        widthSlider.setDisable(true);
+        heightSlider.setDisable(true);
+        foodsSlider.setDisable(true);
+        delaySlider.setDisable(true);
+        gameNameField.setDisable(true);
+
         joinPlayerButton.setDisable(true);
         joinViewerButton.setDisable(true);
+        startMasterNodeButton.setDisable(true);
     }
 
     public void onJoinViewerButtonClick() {

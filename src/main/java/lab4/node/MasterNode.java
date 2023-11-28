@@ -140,14 +140,135 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
         stateSender.start();
     }
 
+    private void updateState() {
+        gameState.setNextStateOrder();
+        gameState.getSnakes().forEach((id, snake) -> {
+            if (snakeDirections.containsKey(snake)) {
+                if (snake.canTurn(snakeDirections.get(snake))) {
+                    snake.setHeadDirection(snakeDirections.get(snake));
+                }
+            }
+            snake.move();
+            snake.normalizeBodyCoords();
+            snake.setDirectionUpdated(false);
+        });
+        gameState.getSnakes().forEach((id1, snake1) -> {
+            gameState.getSnakes().forEach((id2, snake2) -> {
+                if (snake1.getPlayerId() != snake2.getPlayerId() && snake1.isBumped(snake2.getBody().get(0))) {
+                    diedPlayersId.add(snake2.getPlayerId());
+                    gameState.diedSnakeToFood(snake2);
+                    gameState.getPlayers().get(id1).increaseScore(1);
+                }
+            });
+            if (snake1.isBumpedSelf()) {
+                diedPlayersId.add(snake1.getPlayerId());
+                gameState.diedSnakeToFood(snake1);
+            }
+        });
+        diedPlayersId.forEach(id -> {
+            gameState.getSnakes().remove(id);
+            GamePlayer diedPlayer = gameState.getPlayers().get(id);
+//            if (diedPlayer.getRole() == NodeRole.DEPUTY) {
+//                deputyId = -1;
+//                deputyIp = null;
+//                deputyPort = -1;
+//            }
+            diedPlayer.setRole(NodeRole.VIEWER);
+            sendRoleChangeToViewer(diedPlayer);
+        });
+        ArrayList<Coord> eatenFoods = new ArrayList<>();
+        gameState.getSnakes().forEach((id, snake) -> gameState.getFoods().forEach(food -> {
+            if (snake.isBumped(food)) {
+                if (eatenFoods.add(food)) {
+                    snake.grow();
+                    gameState.getPlayers().get(id).increaseScore(1);
+                }
+            }
+        }));
+        eatenFoods.forEach(food -> gameState.getFoods().remove(food));
+        if (gameState.getFoods().size() < (gameState.getConfig().getFoodStatic() + gameState.getSnakesCount())) {
+            while (gameState.getFoods().size() < (gameState.getConfig().getFoodStatic() + gameState.getSnakesCount())) {
+                gameState.addFood();
+            }
+        }
+    }
+
     private void setFoods() {
         for (int i = 0; i < gameState.getConfig().getFoodStatic(); i++) {
             gameState.addFood();
         }
     }
 
-    private void setFoods(ArrayList<Coord> foods) {
-        for (Coord c : foods) gameState.addFood(c);
+    @Override
+    public void handleJoin(long msgSeq, String gameName, String playerName, SnakesProto.PlayerType playerType,
+                           SnakesProto.NodeRole requestedRole, InetAddress newPlayerIp, int newPlayerPort) {
+        System.out.println("master node: handle join");
+        if (requestedRole == SnakesProto.NodeRole.VIEWER) {
+            GamePlayer newPlayer = new GamePlayer(playerName, -1, newPlayerIp, newPlayerPort,
+                    RoleMapper.toClass(requestedRole), TypeMapper.toClass(playerType), 0);
+            viewers.add(newPlayer);
+            sendAck(msgSeq, localId, -1, newPlayerIp, newPlayerPort);
+        } else if (requestedRole == SnakesProto.NodeRole.NORMAL) {
+            int newPlayerId = getNextId();
+            try {
+                gameState.addSnake(newPlayerId);
+            } catch (RuntimeException e) {
+                SnakesProto.GameMessage message = MessageBuilder.buildErrorMessage("failed to place the snake, try again");
+                transferProtocol.send(message, newPlayerIp, newPlayerPort);
+                return;
+            }
+            System.out.println("requested role " + requestedRole);
+            GamePlayer newPlayer = new GamePlayer(playerName, newPlayerId, newPlayerIp, newPlayerPort,
+                    RoleMapper.toClass(requestedRole), TypeMapper.toClass(playerType), 0);
+            System.out.println(newPlayer.getRole());
+            gameState.addPlayer(newPlayer);
+            sendAck(msgSeq, localId, newPlayerId, newPlayerIp, newPlayerPort);
+            System.out.println("Ack sent" + localId + " " + newPlayerId + " " + newPlayerIp + " " + newPlayerPort);
+            if (gameState.getPlayersCount() == 2) {
+                deputyId = newPlayerId;
+                sendRoleChangeToDeputy(newPlayerIp, newPlayerPort);
+            }
+        } else {
+            logger.error("Master node.handleJoin(): unavailable role requested");
+        }
+    }
+
+    @Override
+    public int getNextId() {
+        currentId++;
+        return currentId;
+    }
+
+    @Override
+    public void handleSteer(SnakesProto.Direction headDirection, int senderId) {
+        Snake snake = gameState.getSnakes().get(senderId);
+        if (snake != null) {
+            Direction newDir = DirectionMapper.toClass(headDirection);
+            assert newDir != null;
+            snakeDirections.put(snake, newDir);
+        } else {
+            logger.error("Steer msg for snake that isn't alive");
+        }
+    }
+
+    @Override
+    public void handleRoleChangeToViewer(InetAddress requesterIp, int requesterPort, int playerId) {
+        gameState.getPlayers().get(playerId).setRole(NodeRole.VIEWER);
+        viewers.add(gameState.getPlayers().get(playerId));
+        gameState.getPlayers().remove(playerId);
+    }
+
+    @Override
+    public void ackNewDeputy(InetAddress deputyAddress, int deputyPort) {
+        System.out.println("master: ack new deputy");
+        if (deputyAckAwaiting) {
+            this.deputyIp = deputyAddress;
+            this.deputyPort = deputyPort;
+            deputyAckAwaiting = false;
+            gameState.getPlayers().get(deputyId).setRole(NodeRole.DEPUTY);
+        } else {
+            logger.error("Master node.ackNewDeputy(): ack hasn't been awaited, but received");
+        }
     }
 
     private void sendState() {
@@ -167,37 +288,6 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
             SnakesProto.GameMessage stateMsg = MessageBuilder.buildStateMessage(StateMapper.toProtobuf(gameState, localId), transferProtocol.getNextMessageId());
             transferProtocol.send(stateMsg, viewer.getIpAddress(), viewer.getPort());
         });
-    }
-
-    @Override
-    public void handleSteer(SnakesProto.Direction headDirection, int senderId) {
-        Snake snake = gameState.getSnakes().get(senderId);
-        if (snake != null) {
-            Direction newDir = DirectionMapper.toClass(headDirection);
-            assert newDir != null;
-            snakeDirections.put(snake, newDir);
-        } else {
-            logger.error("Steer msg for snake that isn't alive");
-        }
-    }
-
-    @Override
-    public int getNextId() {
-        currentId++;
-        return currentId;
-    }
-
-    @Override
-    public void ackNewDeputy(InetAddress deputyAddress, int deputyPort) {
-        System.out.println("master: ack new deputy");
-        if (deputyAckAwaiting) {
-            this.deputyIp = deputyAddress;
-            this.deputyPort = deputyPort;
-            deputyAckAwaiting = false;
-            gameState.getPlayers().get(deputyId).setRole(NodeRole.DEPUTY);
-        } else {
-            logger.error("Master node.ackNewDeputy(): ack hasn't been awaited, but received");
-        }
     }
 
     private void sendAnnouncement() throws IOException {
@@ -239,106 +329,7 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
     }
 
     @Override
-    public void handleJoin(long msgSeq, String gameName, String playerName, SnakesProto.PlayerType playerType,
-                           SnakesProto.NodeRole requestedRole, InetAddress newPlayerIp, int newPlayerPort) {
-        System.out.println("master node: handle join");
-        if (requestedRole == SnakesProto.NodeRole.VIEWER) {
-            GamePlayer newPlayer = new GamePlayer(playerName, -1, newPlayerIp, newPlayerPort,
-                    RoleMapper.toClass(requestedRole), TypeMapper.toClass(playerType), 0);
-            viewers.add(newPlayer);
-            sendAck(msgSeq, localId, -1, newPlayerIp, newPlayerPort);
-        } else if (requestedRole == SnakesProto.NodeRole.NORMAL) {
-            int newPlayerId = getNextId();
-            try {
-                gameState.addSnake(newPlayerId);
-            } catch (RuntimeException e) {
-                SnakesProto.GameMessage message = MessageBuilder.buildErrorMessage("failed to place the snake, try again");
-                transferProtocol.send(message, newPlayerIp, newPlayerPort);
-                return;
-            }
-            System.out.println("requested role " + requestedRole);
-            GamePlayer newPlayer = new GamePlayer(playerName, newPlayerId, newPlayerIp, newPlayerPort,
-                    RoleMapper.toClass(requestedRole), TypeMapper.toClass(playerType), 0);
-            System.out.println(newPlayer.getRole());
-            gameState.addPlayer(newPlayer);
-            sendAck(msgSeq, localId, newPlayerId, newPlayerIp, newPlayerPort);
-            System.out.println("Ack sent" + localId + " " + newPlayerId + " " + newPlayerIp + " " + newPlayerPort);
-            if (gameState.getPlayersCount() == 2) {
-                deputyId = newPlayerId;
-                sendRoleChangeToDeputy(newPlayerIp, newPlayerPort);
-            }
-        } else {
-            logger.error("Master node.handleJoin(): unavailable role requested");
-        }
-    }
-
-    @Override
-    public void handleRoleChangeToViewer(InetAddress requesterIp, int requesterPort, int playerId) {
-        gameState.getPlayers().get(playerId).setRole(NodeRole.VIEWER);
-        viewers.add(gameState.getPlayers().get(playerId));
-        gameState.getPlayers().remove(playerId);
-    }
-
-    private void updateState() {
-        gameState.setNextStateOrder();
-        gameState.getSnakes().forEach((id, snake) -> {
-            if (snakeDirections.containsKey(snake)) {
-                if (snake.canTurn(snakeDirections.get(snake))) {
-                    snake.setHeadDirection(snakeDirections.get(snake));
-                }
-            }
-            snake.move();
-            snake.normalizeBodyCoords();
-            snake.setDirectionUpdated(false);
-        });
-        gameState.getSnakes().forEach((id1, snake1) -> {
-            gameState.getSnakes().forEach((id2, snake2) -> {
-                if (snake1.getPlayerId() != snake2.getPlayerId() && snake1.isBumped(snake2.getBody().get(0))) {
-                    diedPlayersId.add(snake2.getPlayerId());
-                    gameState.diedSnakeToFood(snake2);
-                    gameState.getPlayers().get(id1).increaseScore(1);
-                }
-            });
-            if (snake1.isBumpedSelf()) {
-                diedPlayersId.add(snake1.getPlayerId());
-                gameState.diedSnakeToFood(snake1);
-            }
-        });
-        diedPlayersId.forEach(id -> {
-            gameState.getSnakes().remove(id);
-            GamePlayer diedPlayer = gameState.getPlayers().get(id);
-            if (diedPlayer.getRole() == NodeRole.DEPUTY) {
-                deputyId = -1;
-                deputyIp = null;
-                deputyPort = -1;
-            }
-            diedPlayer.setRole(NodeRole.VIEWER);
-            sendRoleChangeToViewer(diedPlayer);
-        });
-        ArrayList<Coord> eatenFoods = new ArrayList<>();
-        gameState.getSnakes().forEach((id, snake) -> gameState.getFoods().forEach(food -> {
-            if (snake.isBumped(food)) {
-                if (eatenFoods.add(food)) {
-                    snake.grow();
-                    gameState.getPlayers().get(id).increaseScore(1);
-                }
-            }
-        }));
-        eatenFoods.forEach(food -> gameState.getFoods().remove(food));
-        if (gameState.getFoods().size() < (gameState.getConfig().getFoodStatic() + gameState.getSnakesCount())) {
-            while (gameState.getFoods().size() < (gameState.getConfig().getFoodStatic() + gameState.getSnakesCount())) {
-                gameState.addFood();
-            }
-        }
-    }
-
-    public void shutdown() {
-        announcementSender.cancel();
-        stateSender.cancel();
-    }
-
-    @Override
-    public void update(InetAddress ip, int port) {
+    public void updateTimeout(InetAddress ip, int port) {
         System.out.println("timeout subscriber: " + ip + " " + port);
         //System.out.println(ip + " " + port);
         for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
@@ -351,5 +342,9 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
                 System.out.println("player deleted");
             }
         }
+    }
+    public void shutdown() {
+        announcementSender.cancel();
+        stateSender.cancel();
     }
 }

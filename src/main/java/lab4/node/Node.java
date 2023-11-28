@@ -73,76 +73,7 @@ public class Node implements INode {
     }
 
     @Override
-    public void setLocalId(int id) {
-        this.localId = id;
-    }
-    @Override
-    public void setLastMessageFromMaster(long time) {
-        lastMessageFromMaster = time;
-        //System.out.println("setLastMessageFromMaster");
-    }
-
-    @Override
-    public void handleAnnouncement(List<SnakesProto.GameAnnouncement> activeGames, InetAddress senderIp, int senderPort, int senderId) {
-        ArrayList<Long> toDelete = new ArrayList<>();
-        for (SnakesProto.GameAnnouncement game : activeGames) {
-            if (game.getCanJoin()) {
-                mastersCollection.forEach((time, master) -> {
-                    if (master.getGameName().equals(game.getGameName()) && (master.getMasterId() == senderId)) {
-                        toDelete.add(time);
-                    }
-                });
-                mastersCollection.put(System.currentTimeMillis(), AnnouncementMapper.toClass(game, senderIp, senderPort, senderId));
-            }
-        }
-        updateMasters(toDelete);
-        view.updateGameList(mastersCollection);
-    }
-    @Override
-    public void handlePing(InetAddress senderIp, int senderPort) {
-
-    }
-
-    @Override
-    public void handleErrorMessage(String error) {
-        view.showError(error);
-    }
-
-    private void updateMasters(ArrayList<Long> toDelete) {
-        Long curTime = System.currentTimeMillis();
-        mastersCollection.forEach((time, master) -> {
-            if (curTime - time > IS_ALIVE_TIMEOUT) {
-                toDelete.add(time);
-            }
-        });
-        toDelete.forEach(key -> mastersCollection.remove(key));
-    }
-
-
-    @Override
-    public void changeMaster(InetAddress masterIp, int masterPort, int masterId) {
-        this.masterIp = masterIp;
-        this.masterPort = masterPort;
-        this.masterId = masterId;
-    }
-
-    @Override
-    public void handleAck(InetAddress masterIp, int masterPort, int localId, int masterId) {
-        System.out.println("handle ack " + masterId + " " + masterIp + " " + masterPort + " " + localId);
-        this.masterIp = masterIp;
-        this.masterPort = masterPort;
-        this.joinAwaiting = false;
-        this.localId = localId;
-        this.masterId = masterId;
-    }
-    @Override
-    public void handlePingAck() {
-        if (isDeputy)
-            lastMessageFromMaster = System.currentTimeMillis();
-    }
-
-    @Override
-    public void chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
+    public GameConfig chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
         System.out.println("Choose game");
         GameAnnouncement chosenGame = null;
         for (GameAnnouncement gameAnnouncement : mastersCollection.values()) {
@@ -168,30 +99,117 @@ public class Node implements INode {
         } else {
             logger.error("Chosen game is null");
         }
+        return gameConfig;
     }
 
     @Override
-    public GameConfig getGameConfig() {
-        return this.gameConfig;
+    public Boolean getJoinAwaiting() {
+        return joinAwaiting;
     }
 
     @Override
-    public void setGameConfig(GameConfig config) {
-        this.gameConfig = config;
+    public void handleAnnouncement(List<SnakesProto.GameAnnouncement> activeGames, InetAddress senderIp, int senderPort, int senderId) {
+        ArrayList<Long> toDelete = new ArrayList<>();
+        for (SnakesProto.GameAnnouncement game : activeGames) {
+            if (game.getCanJoin()) {
+                mastersCollection.forEach((time, master) -> {
+                    if (master.getGameName().equals(game.getGameName()) && (master.getMasterId() == senderId)) {
+                        toDelete.add(time);
+                    }
+                });
+                mastersCollection.put(System.currentTimeMillis(), AnnouncementMapper.toClass(game, senderIp, senderPort, senderId));
+            }
+        }
+        updateMasters(toDelete);
+        view.updateGameList(mastersCollection);
     }
-    @Override
-    public GameState getGameState() { return gameState; }
 
     @Override
-    public Boolean getIsMaster() {
-        return isMaster;
+    public void handleAck(InetAddress masterIp, int masterPort, int localId, int masterId) {
+        System.out.println("handle ack " + masterId + " " + masterIp + " " + masterPort + " " + localId);
+        this.masterIp = masterIp;
+        this.masterPort = masterPort;
+        this.joinAwaiting = false;
+        this.localId = localId;
+        this.masterId = masterId;
     }
+
+    @Override
+    public void handleState(SnakesProto.GameState state) {
+        this.gameState = StateMapper.toClass(state, localId, gameConfig);
+        for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
+            System.out.println(p.getKey() + " " + p.getValue().getRole());
+        Platform.runLater(() -> view.repaintField(gameState, gameConfig, localId));
+    }
+
+    @Override
+    public void handleErrorMessage(String error) {
+        view.showError(error);
+    }
+
+    @Override
+    public void handlePing(InetAddress senderIp, int senderPort) {
+
+    }
+
+    @Override
+    public void handlePingAck() {
+        if (isDeputy)
+            lastMessageFromMaster = System.currentTimeMillis();
+    }
+
+    @Override
+    public void setLastMessageFromMaster(long time) {
+        lastMessageFromMaster = time;
+        //System.out.println("setLastMessageFromMaster");
+    }
+
+    @Override
+    public void setLocalId(int id) {
+        this.localId = id;
+    }
+
+    @Override
+    public InetAddress getMasterIp() {
+        return masterIp;
+    }
+
+    @Override
+    public int getMasterPort() {
+        return masterPort;
+    }
+
+    @Override
+    public int getMasterId() {
+        return masterId;
+    }
+
+    @Override
+    public void changeMaster(InetAddress masterIp, int masterPort, int masterId) {
+        this.masterIp = masterIp;
+        this.masterPort = masterPort;
+        this.masterId = masterId;
+    }
+
+    @Override
+    public void changeRoleToDeputy() {
+        isDeputy = true;
+        lastMessageFromMaster = System.currentTimeMillis();
+        pingMasterSender.start();
+        ackNewRole();
+    }
+
     @Override
     public void removeMaster() {
         System.out.println("remove master: " + masterId);
         gameState.getPlayers().remove(masterId);
         Snake masterSnake = gameState.getSnakes().get(masterId);
         if (masterSnake != null) masterSnake.setSnakeState(SnakeState.ZOMBIE);
+    }
+
+    @Override
+    public Boolean getIsMaster() {
+        return isMaster;
     }
 
     @Override
@@ -204,34 +222,17 @@ public class Node implements INode {
     }
 
     @Override
-    public InetAddress getMasterIp() {
-        return masterIp;
-    }
-    @Override
-    public int getMasterId() {
-        return masterId;
+    public GameConfig getGameConfig() {
+        return this.gameConfig;
     }
 
     @Override
-    public void changeRoleToDeputy() {
-        isDeputy = true;
-        lastMessageFromMaster = System.currentTimeMillis();
-        pingMasterSender.start();
-        ackNewRole();
+    public void setGameConfig(GameConfig config) {
+        this.gameConfig = config;
     }
 
     @Override
-    public void killSnake() {
-
-    }
-
-    @Override
-    public void handleState(SnakesProto.GameState state) {
-        this.gameState = StateMapper.toClass(state, localId, gameConfig);
-        for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
-            System.out.println(p.getKey() + " " + p.getValue().getRole());
-        Platform.runLater(() -> view.repaintField(gameState, gameConfig, localId));
-    }
+    public GameState getGameState() { return gameState; }
 
     @Override
     public void moveUp() {
@@ -253,6 +254,20 @@ public class Node implements INode {
         sendSteer(Direction.DOWN);
     }
 
+    @Override
+    public void shutdown() {
+    }
+
+    private void updateMasters(ArrayList<Long> toDelete) {
+        Long curTime = System.currentTimeMillis();
+        mastersCollection.forEach((time, master) -> {
+            if (curTime - time > IS_ALIVE_TIMEOUT) {
+                toDelete.add(time);
+            }
+        });
+        toDelete.forEach(key -> mastersCollection.remove(key));
+    }
+
     private void sendSteer(Direction dir) {
         if (isMaster) {
             SnakesProto.GameMessage message = MessageBuilder.buildSteerMessage(DirectionMapper.toProtobuf(dir), -1, localId);
@@ -270,16 +285,6 @@ public class Node implements INode {
         transferProtocol.send(message, masterIp, masterPort);
     }
 
-    @Override
-    public int getMasterPort() {
-        return masterPort;
-    }
-
-    @Override
-    public Boolean getJoinAwaiting() {
-        return joinAwaiting;
-    }
-
     private void handleMasterDeath() {
         if (isMaster) {
             System.out.println("i am master and i am dead !!!!!!!!!!!!!!!!!!");
@@ -294,8 +299,5 @@ public class Node implements INode {
             //change master's ip and port on deputy's
             //resend not acked messages
         }
-    }
-    @Override
-    public void shutdown() {
     }
 }

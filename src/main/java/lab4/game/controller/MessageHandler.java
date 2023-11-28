@@ -127,7 +127,7 @@ public class MessageHandler implements IMessageHandler {
             System.out.println("receiver role " + msg.getReceiverRole());
             if (msg.getReceiverRole() == SnakesProto.NodeRole.VIEWER) {
                 if (senderIp == model.getNode().getMasterIp()) {
-                    model.getNode().killSnake();
+                    //kill snake
                 } else {
                     logger.error("Kill snake command from not-master node");
                 }
