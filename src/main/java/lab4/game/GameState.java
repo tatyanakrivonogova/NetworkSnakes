@@ -25,7 +25,7 @@ public class GameState {
         this.coordsTypeMap = new HashMap<>();
         for (int row = 0; row < config.getHeight(); ++row){
             for (int col = 0; col < config.getWidth(); ++col){
-                Coord coord = new Coord(row, col);
+                Coord coord = new Coord(col, row);
                 coordsTypeMap.put(coord, CoordType.EMPTY);
             }
         }
@@ -43,7 +43,7 @@ public class GameState {
         this.coordsTypeMap = new HashMap<>();
         for (int row = 0; row < config.getHeight(); ++row){
             for (int col = 0; col < config.getWidth(); ++col){
-                Coord coord = new Coord(row, col);
+                Coord coord = new Coord(col, row);
                 coordsTypeMap.put(coord, CoordType.EMPTY);
             }
         }

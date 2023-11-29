@@ -126,7 +126,7 @@ public class GUI implements IView {
     private void drawFood(Coord food) {
         GraphicsContext context = field.getGraphicsContext2D();
         context.setFill(Color.TOMATO);
-        context.fillOval((CELL_SIZE * food.getY()) + 4, (CELL_SIZE * food.getX()) + 4, 12.0, 12.0);
+        context.fillOval((CELL_SIZE * food.getX()) + 4, (CELL_SIZE * food.getY()) + 4, 12.0, 12.0);
     }
 
     private void drawSnake(Snake snake, Color color) {

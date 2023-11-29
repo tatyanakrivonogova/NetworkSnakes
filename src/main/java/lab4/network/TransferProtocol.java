@@ -81,7 +81,6 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
                 if (toSendMessage != null) {
                     try {
                         sendUnicastMessageWithAck(toSendMessage);
-                        //System.out.println("sent message " + sendingNumber);
                         sendingNumber++;
                     } catch (IOException e) {
                         logger.error("TransferProtocol.run(): " + e);
@@ -152,8 +151,10 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
         RawMessage rcvData = datagramChannel.receive();
         //System.out.println("receive message: " + rcvData);
         if (rcvData != null) {
+            //System.out.println("new received message");
             SnakesProto.GameMessage gameMessage = SnakesProto.GameMessage.parseFrom(rcvData.getMessage());
             if (gameMessage.hasJoin()) System.out.println("join###############################");
+            if (gameMessage.hasRoleChange()) System.out.println("change role********************************");
 
             if ((gameMessage.hasAck() && gameMessage.getReceiverId() != 0) || gameMessage.hasAnnouncement()) {
                 notifyReceiveSubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort(), gameMessage.getMsgSeq()));

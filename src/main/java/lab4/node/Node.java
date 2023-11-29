@@ -170,12 +170,13 @@ public class Node implements INode {
 
     @Override
     public void handlePing(InetAddress senderIp, int senderPort) {
-
+        System.out.println("pinggggggggggggggggggg");
     }
 
     @Override
     public void handlePingAck() {
         //if (isDeputy)
+        System.out.println("handle ping ack");
         lastMessageFromMaster = System.currentTimeMillis();
     }
 
@@ -319,7 +320,7 @@ public class Node implements INode {
             System.out.println("i am master and i am dead !!!!!!!!!!!!!!!!!!");
         } else if (isDeputy) {
             System.out.println("i am deputy and master is dead");
-            removeMaster();
+            //removeMaster();
             SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
                     SnakesProto.NodeRole.MASTER, localId, transferProtocol.getNextMessageId());
             transferProtocol.sendMyself(msg);

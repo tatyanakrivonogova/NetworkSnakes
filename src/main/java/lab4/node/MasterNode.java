@@ -89,6 +89,13 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
     public MasterNode(int localId, GameConfig config, INode node, GameState gameState) {
         this.node = node;
         this.gameState = gameState;
+        for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
+            if (p.getValue().getRole() == NodeRole.MASTER) {
+                System.out.println("set role to viewer " + p.getKey());
+                p.getValue().setRole(NodeRole.VIEWER);
+                gameState.getSnakes().get(p.getKey()).setSnakeState(SnakeState.ZOMBIE);
+            }
+        }
         this.gameState.getPlayers().get(localId).setRole(NodeRole.MASTER);
         HashSet<GamePlayer> viewers = new HashSet<>();
         for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
@@ -115,6 +122,10 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
         for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet())
             if (p.getKey() > this.currentId) this.currentId = p.getKey();
         this.currentId++;
+
+        this.deputyId = -1;
+        this.deputyIp = null;
+        this.deputyPort = -1;
 
         this.deputyAckAwaiting = false; //!!!
         announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
@@ -353,7 +364,8 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
                     //System.out.println(gameState.getPlayers().size());
                     gameState.getPlayers().remove(p.getKey());
                     //System.out.println(gameState.getPlayers().size());
-                    gameState.getSnakes().get(p.getKey()).setSnakeState(SnakeState.ZOMBIE);
+                    if (gameState.getSnakes().get(p.getKey()) != null)
+                        gameState.getSnakes().get(p.getKey()).setSnakeState(SnakeState.ZOMBIE);
                     System.out.println("player deleted");
                 }
             }
@@ -385,8 +397,11 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
             if (p.getValue().getRole() == NodeRole.NORMAL) {
                 deputyId = p.getKey();
                 sendRoleChangeToDeputy(p.getValue().getIpAddress(), p.getValue().getPort());
+                System.out.println("new deputy chosen: " + deputyId + " " + p.getValue().getIpAddress() + " " + p.getValue().getPort());
+                break;
             }
         }
+        deputyAckAwaiting = true;
     }
     public void shutdown() {
         announcementSender.cancel();
