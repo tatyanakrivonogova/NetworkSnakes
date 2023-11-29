@@ -116,13 +116,6 @@ public class GameState {
         }
         return empty;
     }
-    public Optional<Coord> findRandomEmptyCoord(){
-        ArrayList<Coord> emptyCoords = getEmptyCoords();
-        if (emptyCoords.isEmpty()){
-            return Optional.empty();
-        }
-        return Optional.of(emptyCoords.get(random.nextInt(emptyCoords.size() - 1)));
-    }
 
     public boolean hasEmptySquare() {
         Optional<Coord> emptySquare = findEmptySquare();
@@ -152,21 +145,14 @@ public class GameState {
     }
 
     public void addFood() {
-        if (getEmptyCoords().isEmpty()) {
-            throw new RuntimeException("Can't add food on the field");
+        ArrayList<Coord> emptyCoords = getEmptyCoords();
+        if (emptyCoords.isEmpty()) {
+            //throw new RuntimeException("Can't add food on the field");
+            return;
         }
-        while (true) {
-            Optional<Coord> emptyCoordOptional = findRandomEmptyCoord();
-            if (emptyCoordOptional.isEmpty()) continue;
-            Coord emptyCoord = emptyCoordOptional.get();
-            coordsTypeMap.replace(emptyCoord, CoordType.FOOD);
-            foods.add(emptyCoord);
-            break;
-        }
-    }
-
-    public void addFood(Coord c) {
-        foods.add(c);
+        Coord emptyCoord = emptyCoords.get(random.nextInt(emptyCoords.size()));
+        coordsTypeMap.replace(emptyCoord, CoordType.FOOD);
+        foods.add(emptyCoord);
     }
 
     public void diedSnakeToFood(Snake snake) {

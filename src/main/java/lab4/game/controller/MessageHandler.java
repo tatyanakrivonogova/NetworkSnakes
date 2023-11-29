@@ -43,7 +43,7 @@ public class MessageHandler implements IMessageHandler {
                 handleState(message.getGameMessage().getState(), message.getSenderAddress(), message.getSenderPort());
                 break;
             case STEER:
-                handleSteer(message.getGameMessage().getSteer(), message.getGameMessage().getSenderId());
+                handleSteer(message.getMsgSeq(), message.getGameMessage().getSteer(), message.getGameMessage().getSenderId());
                 break;
             case DISCOVER:
 //                handleDiscover(message.getGameMessage().getDiscover(), message.getSenderAddress(), message.getSenderPort());
@@ -96,9 +96,9 @@ public class MessageHandler implements IMessageHandler {
         model.getNode().handleState(msg.getState());
     }
 
-    private void handleSteer(SnakesProto.GameMessage.SteerMsg msg, int senderId) {
+    private void handleSteer(long msgSeq, SnakesProto.GameMessage.SteerMsg msg, int senderId) {
         if (model.getLocalPlayer().getRole() == NodeRole.MASTER) {
-            model.getMasterNode().handleSteer(msg.getDirection(), senderId);
+            model.getMasterNode().handleSteer(msgSeq, msg.getDirection(), senderId);
         }
     }
 
@@ -128,8 +128,9 @@ public class MessageHandler implements IMessageHandler {
             if (msg.getReceiverRole() == SnakesProto.NodeRole.VIEWER) {
                 if (senderIp == model.getNode().getMasterIp()) {
                     //kill snake
+                    System.out.println("change role to viewer");
                 } else {
-                    logger.error("Kill snake command from not-master node");
+                    logger.error("Change role to viewer command from not-master node");
                 }
             }
             if (msg.getReceiverRole() == SnakesProto.NodeRole.DEPUTY) {

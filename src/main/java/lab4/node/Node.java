@@ -33,9 +33,12 @@ public class Node implements INode {
     private GameConfig gameConfig;
     private GameState gameState;
     private int localId;
+    private InetAddress masterIp;
     private int masterPort;
     private int masterId;
-    private InetAddress masterIp;
+    private InetAddress deputyIp;
+    private int deputyPort;
+    private int deputyId;
     private Boolean joinAwaiting;
     private Boolean isMaster;
     private Boolean isDeputy;
@@ -52,6 +55,9 @@ public class Node implements INode {
             this.mastersCollection = new ConcurrentHashMap<>();
             isMaster = false;
             isDeputy = false;
+            deputyIp = null;
+            deputyPort = -1;
+            deputyId = -1;
         } catch (IOException e) {
             logger.error("Node constructor: unable to create TransferProtocol: " + e);
             logger.error("Shutdown...");
@@ -132,14 +138,29 @@ public class Node implements INode {
         this.joinAwaiting = false;
         this.localId = localId;
         this.masterId = masterId;
+        lastMessageFromMaster = System.currentTimeMillis();
+        pingMasterSender.start();
     }
 
     @Override
     public void handleState(SnakesProto.GameState state) {
         this.gameState = StateMapper.toClass(state, localId, gameConfig);
+//        for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
+//            System.out.println(p.getKey() + " " + p.getValue().getRole());
+
         for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
-            System.out.println(p.getKey() + " " + p.getValue().getRole());
+            if (p.getValue().getRole() == NodeRole.DEPUTY) {
+                changeDeputy(p.getValue().getIpAddress(), p.getValue().getPort(), p.getKey());
+            }
+        System.out.println("deputy " + deputyId + " " + deputyIp + " " + deputyPort);
+        System.out.println("master " + masterId + " " + masterIp + " " + masterPort);
         Platform.runLater(() -> view.repaintField(gameState, gameConfig, localId));
+    }
+
+    private void changeDeputy(InetAddress ip, int port, int id) {
+        deputyIp = ip;
+        deputyPort = port;
+        deputyId = id;
     }
 
     @Override
@@ -154,8 +175,8 @@ public class Node implements INode {
 
     @Override
     public void handlePingAck() {
-        if (isDeputy)
-            lastMessageFromMaster = System.currentTimeMillis();
+        //if (isDeputy)
+        lastMessageFromMaster = System.currentTimeMillis();
     }
 
     @Override
@@ -194,8 +215,8 @@ public class Node implements INode {
     @Override
     public void changeRoleToDeputy() {
         isDeputy = true;
-        lastMessageFromMaster = System.currentTimeMillis();
-        pingMasterSender.start();
+        //lastMessageFromMaster = System.currentTimeMillis();
+        //pingMasterSender.start();
         ackNewRole();
     }
 
@@ -227,6 +248,8 @@ public class Node implements INode {
     }
 
     @Override
+
+
     public void setGameConfig(GameConfig config) {
         this.gameConfig = config;
     }
@@ -286,6 +309,12 @@ public class Node implements INode {
     }
 
     private void handleMasterDeath() {
+//        for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
+//            if (p.getValue().getRole() == NodeRole.MASTER) {
+//                //gameState.getPlayers().remove(p.getKey());
+//                //System.out.println("master removed from players");
+//            }
+//        }
         if (isMaster) {
             System.out.println("i am master and i am dead !!!!!!!!!!!!!!!!!!");
         } else if (isDeputy) {
@@ -296,8 +325,10 @@ public class Node implements INode {
             transferProtocol.sendMyself(msg);
         } else {
             System.out.println("i am normal and master is dead");
-            //change master's ip and port on deputy's
-            //resend not acked messages
+            masterIp = deputyIp;
+            masterPort = deputyPort;
+            masterId = deputyId;
+            lastMessageFromMaster = System.currentTimeMillis();
         }
     }
 }

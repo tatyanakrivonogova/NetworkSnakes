@@ -64,37 +64,37 @@ public class Snake {
     }
 
     public List<Coord> getKeyCoords() {
-        var tmp = new ArrayList<Coord>();
         var keyCoords = new ArrayList<Coord>();
-        tmp.add(body.get(0));
+        var offsetCoords = new ArrayList<Coord>();
+        keyCoords.add(body.get(0));
         var iter = body.iterator();
-        Coord prev = iter.next();
+        Coord previous = iter.next();
         while (iter.hasNext()) {
-            Coord curr = iter.next();
-            keyCoords.add(new Coord(curr.getX() - prev.getX(), curr.getY() - prev.getY()));
-            prev = curr;
+            Coord current = iter.next();
+            offsetCoords.add(new Coord(current.getX() - previous.getX(), current.getY() - previous.getY()));
+            previous = current;
         }
-        keyCoords.forEach(coord -> {
+        offsetCoords.forEach(coord -> {
             if (Math.abs(coord.getY()) == config.getHeight() - 1) {
                 coord.setY((int) -Math.signum(coord.getY()));
             } else if (Math.abs(coord.getX()) == config.getWidth() - 1) {
                 coord.setX((int) -Math.signum(coord.getX()));
             }
         });
-        var iter1 = keyCoords.iterator();
-        Coord prevOf = iter1.next();
-        Coord acc = prevOf;
+        var iter1 = offsetCoords.iterator();
+        Coord prevOffset = iter1.next();
+        Coord accOffset = prevOffset;
         while (iter1.hasNext()) {
-            Coord curOf = iter1.next();
-            if (curOf != prevOf) {
-                tmp.add(acc);
-                acc = new Coord(0, 0);
+            Coord curOffset = iter1.next();
+            if (curOffset != prevOffset) {
+                keyCoords.add(accOffset);
+                accOffset = new Coord(0, 0);
             }
-            acc = new Coord(acc.getX() + curOf.getX(), acc.getY() + curOf.getY());
-            prevOf = curOf;
+            accOffset = new Coord(accOffset.getX() + curOffset.getX(), accOffset.getY() + curOffset.getY());
+            prevOffset = curOffset;
         }
-        tmp.add(acc);
-        return tmp;
+        keyCoords.add(accOffset);
+        return keyCoords;
     }
 
     private void keyCoordsToBody(List<Coord> keyCoords) {
@@ -159,14 +159,14 @@ public class Snake {
 
     private List<Coord> createSnakePart(Coord start, Coord offset) {
         if (((offset.getX() == 0) && (offset.getY() == 0)) || ((offset.getX() != 0) && (offset.getY() != 0))) {
-            logger.error("Wrong coords");
+            logger.error("Wrong coords offset");
             return null;
         }
         ArrayList<Coord> coords = new ArrayList<>();
-        Coord unaryVector = new Coord((int) Math.signum(offset.getX()), (int) Math.signum(offset.getY()));
+        Coord direction = new Coord((int) Math.signum(offset.getX()), (int) Math.signum(offset.getY()));
         int len = Math.abs(offset.getX() + offset.getY());
         for (int i = 0; i < len; i++) {
-            coords.add(new Coord(start.getX() + (unaryVector.getX() * i), start.getY() + (unaryVector.getY()) * i));
+            coords.add(new Coord(start.getX() + (direction.getX() * i), start.getY() + (direction.getY()) * i));
         }
         return coords;
     }

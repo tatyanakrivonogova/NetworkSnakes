@@ -12,7 +12,7 @@ public interface IMasterNode {
 
     void handleRoleChangeToViewer(InetAddress requesterIp, int requesterPort, int senderId);
 
-    void handleSteer(SnakesProto.Direction headDirection, int senderId);
+    void handleSteer(long msgSeq, SnakesProto.Direction headDirection, int senderId);
 
     int getNextId();
 

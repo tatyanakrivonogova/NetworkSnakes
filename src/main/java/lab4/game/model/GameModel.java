@@ -30,7 +30,6 @@ public class GameModel implements IGameModel {
         this.node = new Node(view);
         node.setGameConfig(config);
     }
-
     @Override
     public void createMasterNode(int localId, GameConfig config, String playerName, PlayerType type, INode node) {
         this.masterNode = new MasterNode(localId, config, playerName, type, node);
@@ -45,7 +44,6 @@ public class GameModel implements IGameModel {
     public IMasterNode getMasterNode() { return masterNode; }
     @Override
     public void setLocalPlayer(GamePlayer player) { this.localPlayer = player; }
-
     @Override
     public GamePlayer getLocalPlayer() { return localPlayer; }
 }

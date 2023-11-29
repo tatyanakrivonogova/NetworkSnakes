@@ -32,7 +32,7 @@ public class MulticastReceiver {
                 byteBuffer.put(packet.getData(), 0, packet.getLength());
                 SnakesProto.GameMessage message = SnakesProto.GameMessage.parseFrom(byteBuffer.array());
                 if (message != null) {
-                    emitter.onNext(new ReceivedMessage(message, packet.getAddress(), packet.getPort()));
+                    emitter.onNext(new ReceivedMessage(message, packet.getAddress(), packet.getPort(), message.getMsgSeq()));
                 }
             }
         }, BackpressureStrategy.BUFFER);

@@ -125,7 +125,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
     }
 
     public void sendMyself(SnakesProto.GameMessage message) {
-        notifyReceiveSubscribers(new ReceivedMessage(message, null, 0));
+        notifyReceiveSubscribers(new ReceivedMessage(message, null, 0, 0));
     }
 
     private void sendUnicastMessageWithAck(SentMessage message) throws IOException {
@@ -156,7 +156,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
             if (gameMessage.hasJoin()) System.out.println("join###############################");
 
             if ((gameMessage.hasAck() && gameMessage.getReceiverId() != 0) || gameMessage.hasAnnouncement()) {
-                notifyReceiveSubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort()));
+                notifyReceiveSubscribers(new ReceivedMessage(gameMessage, rcvData.getSenderAddress(), rcvData.getSenderPort(), gameMessage.getMsgSeq()));
             } else {
                 long seq = gameMessage.getMsgSeq();
                 if (gameMessage.hasAck() && seq >= 0) {
@@ -173,8 +173,8 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
 
     private void createMessageForTransfer(SnakesProto.GameMessage gameMessage, InetAddress address, int port, long seq) {
         InetSocketAddress inetSocketAddress = new InetSocketAddress(address, port);
-        ReceivedMessage rcvMessage = new ReceivedMessage(gameMessage, address, port);
-        for (InetSocketAddress a : receivedMessages.keySet()) System.out.println(a);
+        ReceivedMessage rcvMessage = new ReceivedMessage(gameMessage, address, port, gameMessage.getMsgSeq());
+        //for (InetSocketAddress a : receivedMessages.keySet()) System.out.println(a);
         if (!receivedMessages.containsKey(inetSocketAddress)) {
             receivedMessages.put(inetSocketAddress, new HashMap<>());
         }

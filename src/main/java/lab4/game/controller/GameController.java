@@ -74,7 +74,6 @@ public class GameController implements IGameController, ReceiveSubscriber {
         model.createMasterNode(1, config, model.getLocalPlayer().getName(), model.getLocalPlayer().getPlayerType(), model.getNode());
         model.getMasterNode().run();
     }
-
     @Override
     public GameConfig chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
         return model.getNode().chooseGame(gameName, playerType, playerName, requestedRole);
@@ -99,7 +98,6 @@ public class GameController implements IGameController, ReceiveSubscriber {
     public void moveRight() {
         model.getNode().moveRight();
     }
-
 
     @Override
     public NodeRole getLocalPlayerRole() {
