@@ -100,6 +100,8 @@ public class Node implements INode {
             gameConfig = chosenGame.getConfig();
             gameConfig.setGameName(gameName);
             masterId = chosenGame.getMasterId();
+            masterIp = chosenGame.getMasterIp();
+            masterPort = chosenGame.getMasterPort();
             //announcementUpdater.cancel();
             logger.info("Master was set " + chosenGame.getMasterId());
         } else {
@@ -140,20 +142,28 @@ public class Node implements INode {
     @Override
     public void handleAck(InetAddress masterIp, int masterPort, int localId, int masterId) {
         System.out.println("handle ack " + masterId + " " + masterIp + " " + masterPort + " " + localId);
-        this.masterIp = masterIp;
-        this.masterPort = masterPort;
+        if (masterIp != null && masterPort != -1 && masterId != -1 &&
+                (!masterIp.equals(this.masterIp) || masterPort != this.masterPort || masterId != this.masterId)) {
+            logger.error("Ack from unknown host");
+            return;
+        }
+
+//        this.masterIp = masterIp;
+//        this.masterPort = masterPort;
         this.joinAwaiting = false;
         this.localId = localId;
-        this.masterId = masterId;
+//        this.masterId = masterId;
         lastMessageFromMaster = System.currentTimeMillis();
         pingMasterSender.start();
     }
 
     @Override
-    public void handleState(SnakesProto.GameState state) {
+    public void handleState(SnakesProto.GameState state, InetAddress masterIp, int masterPort) {
+        if (masterIp != null && masterPort != -1 && (!masterIp.equals(this.masterIp) || masterPort != this.masterPort)) {
+            logger.error("State from unknown host");
+            return;
+        }
         this.gameState = StateMapper.toClass(state, localId, gameConfig);
-//        for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
-//            System.out.println(p.getKey() + " " + p.getValue().getRole());
 
         for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
             if (p.getValue().getRole() == NodeRole.DEPUTY) {
@@ -330,9 +340,7 @@ public class Node implements INode {
             transferProtocol.sendMyself(msg);
         } else {
             System.out.println("i am normal and master is dead");
-            masterIp = deputyIp;
-            masterPort = deputyPort;
-            masterId = deputyId;
+            changeMaster(deputyIp, deputyPort, deputyId);
             lastMessageFromMaster = System.currentTimeMillis();
         }
     }

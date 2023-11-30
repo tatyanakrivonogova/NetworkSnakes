@@ -20,7 +20,7 @@ public interface INode {
 
     void handleAck(InetAddress masterIp, int masterPort, int localId, int masterId);
 
-    void handleState(SnakesProto.GameState state);
+    void handleState(SnakesProto.GameState state, InetAddress masterIp, int masterPort);
 
     void handleErrorMessage(String error);
 

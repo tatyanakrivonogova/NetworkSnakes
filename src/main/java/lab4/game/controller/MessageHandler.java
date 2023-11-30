@@ -93,7 +93,7 @@ public class MessageHandler implements IMessageHandler {
     }
 
     private void handleState(SnakesProto.GameMessage.StateMsg msg, InetAddress senderIp, int senderPort) {
-        model.getNode().handleState(msg.getState());
+        model.getNode().handleState(msg.getState(), senderIp, senderPort);
     }
 
     private void handleSteer(long msgSeq, SnakesProto.GameMessage.SteerMsg msg, int senderId) {
