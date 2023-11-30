@@ -114,6 +114,13 @@ public class Node implements INode {
     }
 
     @Override
+    public boolean checkNameOfNewGame(String name) {
+        for (Map.Entry<Long, GameAnnouncement> g : mastersCollection.entrySet())
+            if (g.getValue().getGameName().equals(name)) return false;
+        return true;
+    }
+
+    @Override
     public void handleAnnouncement(List<SnakesProto.GameAnnouncement> activeGames, InetAddress senderIp, int senderPort, int senderId) {
         ArrayList<Long> toDelete = new ArrayList<>();
         for (SnakesProto.GameAnnouncement game : activeGames) {

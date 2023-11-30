@@ -14,6 +14,8 @@ public interface INode {
 
     Boolean getJoinAwaiting();
 
+    boolean checkNameOfNewGame(String name);
+
     void handleAnnouncement(List<SnakesProto.GameAnnouncement> announcements, InetAddress senderIp, int senderPort, int senderId);
 
     void handleAck(InetAddress masterIp, int masterPort, int localId, int masterId);

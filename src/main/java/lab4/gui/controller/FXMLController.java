@@ -101,6 +101,10 @@ public class FXMLController implements IController {
             view.showError("Too long name of game. Choose another one and click again");
             return;
         }
+        if (!gameController.checkGameName(gameNameField.getText())) {
+            view.showError("This name is used. Choose another");
+            return;
+        }
         if ("".equals(playerNameField.getText())) {
             playerName = "player1";
         } else {
@@ -114,14 +118,7 @@ public class FXMLController implements IController {
             view.showError("Too big foods value. Change and click again");
             return;
         }
-//        startMasterNodeButton.setDisable(true);
-//        gameNameField.setEditable(false);
-//        playerNameField.setEditable(false);
-//
-//        joinPlayerButton.setDisable(true);
-//        joinViewerButton.setDisable(true);
         disableConfig();
-
 
         GameConfig config = new GameConfig((int) widthSlider.getValue(), (int) heightSlider.getValue(),
                 (int) foodsSlider.getValue(), (int) delaySlider.getValue(), gameNameField.getText());

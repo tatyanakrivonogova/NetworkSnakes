@@ -74,6 +74,11 @@ public class GameController implements IGameController, ReceiveSubscriber {
         model.createMasterNode(1, config, model.getLocalPlayer().getName(), model.getLocalPlayer().getPlayerType(), model.getNode());
         model.getMasterNode().run();
     }
+
+    @Override
+    public boolean checkGameName(String name) {
+        return model.getNode().checkNameOfNewGame(name);
+    }
     @Override
     public GameConfig chooseGame(String gameName, PlayerType playerType, String playerName, NodeRole requestedRole) {
         return model.getNode().chooseGame(gameName, playerType, playerName, requestedRole);
