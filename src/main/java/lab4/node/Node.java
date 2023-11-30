@@ -100,7 +100,7 @@ public class Node implements INode {
             gameConfig = chosenGame.getConfig();
             gameConfig.setGameName(gameName);
             masterId = chosenGame.getMasterId();
-            announcementUpdater.cancel();
+            //announcementUpdater.cancel();
             logger.info("Master was set " + chosenGame.getMasterId());
         } else {
             logger.error("Chosen game is null");
@@ -280,6 +280,9 @@ public class Node implements INode {
 
     @Override
     public void shutdown() {
+        announcementUpdater.cancel();
+        pingMasterSender.cancel();
+        transferProtocol.shutdown();
     }
 
     private void updateMasters(ArrayList<Long> toDelete) {
@@ -310,12 +313,6 @@ public class Node implements INode {
     }
 
     private void handleMasterDeath() {
-//        for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
-//            if (p.getValue().getRole() == NodeRole.MASTER) {
-//                //gameState.getPlayers().remove(p.getKey());
-//                //System.out.println("master removed from players");
-//            }
-//        }
         if (isMaster) {
             System.out.println("i am master and i am dead !!!!!!!!!!!!!!!!!!");
         } else if (isDeputy) {

@@ -3,25 +3,26 @@
 3. viewer (accepting by masterNode) !
 4. finishing of program
 5. receiving of announcements before start of game !
-6. refactoring of master node, game model
-7. score panel on GUI
+6. refactoring of master node, game model !
+7. score panel on GUI !
 8. validation of config
 9. scale of field
 10. highlight own snake !
 11. gui color !
 12. warning about fx versions !
 13. check scores
-14. add config params for choice of game
+14. add config params for choice of game !
 15. snakes grow after master death, scores is zero
 16. exception in DatagramSocketWrapper
 17. death of snake in the beginning
 18. three players !
-19. status message
-20. set of foods
+19. status message !
+20. set of foods !
 21. the same name of game
 22. dead master's snake
 23. update number of players in announcement
 24. in deputy master ping timeout
+25. add list of players on view
 
 deputy death - good
 master death - for deputy snakes grow, for normal nothing works

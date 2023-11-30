@@ -10,7 +10,7 @@ import lab4.game.controller.GameController;
 import lab4.game.controller.IGameController;
 import lab4.game.player.GamePlayer;
 import lab4.game.player.PlayerType;
-import lab4.gui.view.GUI;
+import lab4.gui.view.View;
 import lab4.gui.view.IView;
 
 public class FXMLController implements IController {
@@ -59,7 +59,7 @@ public class FXMLController implements IController {
 
     @Override
     public void start() {
-        this.view = new GUI(field, mastersList, rightStatus, leftStatus);
+        this.view = new View(field, mastersList, rightStatus, leftStatus);
         widthSlider.valueProperty().addListener((observable, oldValue, newValue) -> widthLabel.setText(String.valueOf(newValue.intValue())));
         heightSlider.valueProperty().addListener((observable, oldValue, newValue) -> heightLabel.setText(String.valueOf(newValue.intValue())));
         delaySlider.valueProperty().addListener((observable, oldValue, newValue) -> delayLabel.setText(String.valueOf(newValue.intValue())));
@@ -83,6 +83,18 @@ public class FXMLController implements IController {
         }
     }
 
+    private void disableConfig() {
+        widthSlider.setDisable(true);
+        heightSlider.setDisable(true);
+        foodsSlider.setDisable(true);
+        delaySlider.setDisable(true);
+        gameNameField.setDisable(true);
+        playerNameField.setDisable(true);
+
+        joinPlayerButton.setDisable(true);
+        joinViewerButton.setDisable(true);
+        startMasterNodeButton.setDisable(true);
+    }
     public void onStartMasterNodeButtonClick() {
         String playerName;
         if (gameNameField.getText().length() > 10) {
@@ -102,12 +114,13 @@ public class FXMLController implements IController {
             view.showError("Too big foods value. Change and click again");
             return;
         }
-        startMasterNodeButton.setDisable(true);
-        gameNameField.setEditable(false);
-        playerNameField.setEditable(false);
-
-        joinPlayerButton.setDisable(true);
-        joinViewerButton.setDisable(true);
+//        startMasterNodeButton.setDisable(true);
+//        gameNameField.setEditable(false);
+//        playerNameField.setEditable(false);
+//
+//        joinPlayerButton.setDisable(true);
+//        joinViewerButton.setDisable(true);
+        disableConfig();
 
 
         GameConfig config = new GameConfig((int) widthSlider.getValue(), (int) heightSlider.getValue(),
@@ -141,15 +154,16 @@ public class FXMLController implements IController {
         delaySlider.setValue(config.getStateDelayMs());
         gameNameField.setText(config.getGameName());
 
-        widthSlider.setDisable(true);
-        heightSlider.setDisable(true);
-        foodsSlider.setDisable(true);
-        delaySlider.setDisable(true);
-        gameNameField.setDisable(true);
-
-        joinPlayerButton.setDisable(true);
-        joinViewerButton.setDisable(true);
-        startMasterNodeButton.setDisable(true);
+//        widthSlider.setDisable(true);
+//        heightSlider.setDisable(true);
+//        foodsSlider.setDisable(true);
+//        delaySlider.setDisable(true);
+//        gameNameField.setDisable(true);
+//
+//        joinPlayerButton.setDisable(true);
+//        joinViewerButton.setDisable(true);
+//        startMasterNodeButton.setDisable(true);
+        disableConfig();
     }
 
     public void onJoinViewerButtonClick() {
@@ -171,15 +185,16 @@ public class FXMLController implements IController {
         delaySlider.setValue(config.getStateDelayMs());
         gameNameField.setText(config.getGameName());
 
-        widthSlider.setDisable(true);
-        heightSlider.setDisable(true);
-        foodsSlider.setDisable(true);
-        delaySlider.setDisable(true);
-        gameNameField.setDisable(true);
-
-        joinPlayerButton.setDisable(true);
-        joinViewerButton.setDisable(true);
-        startMasterNodeButton.setDisable(true);
+//        widthSlider.setDisable(true);
+//        heightSlider.setDisable(true);
+//        foodsSlider.setDisable(true);
+//        delaySlider.setDisable(true);
+//        gameNameField.setDisable(true);
+//
+//        joinPlayerButton.setDisable(true);
+//        joinViewerButton.setDisable(true);
+//        startMasterNodeButton.setDisable(true);
+        disableConfig();
     }
 
     @Override

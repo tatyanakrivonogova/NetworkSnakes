@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
-public class GUI implements IView {
+public class View implements IView {
     private static final int CELL_SIZE = 20;
     private final Canvas field;
     private final ArrayList<String> activeGames;
@@ -25,7 +25,7 @@ public class GUI implements IView {
     private final Label leftStatus;
     private boolean isUpdated = false;
 
-    public GUI(Canvas field, ListView<String> mastersList, Label rightStatus, Label leftStatus) {
+    public View(Canvas field, ListView<String> mastersList, Label rightStatus, Label leftStatus) {
         this.field = field;
         this.mastersView = mastersList;
         this.activeGames = new ArrayList<>();
@@ -38,10 +38,10 @@ public class GUI implements IView {
 
         Set<String> setNew = new HashSet<>();
         for (String s: mastersView.getItems()) {
-            setNew.add(s.substring(0, s.indexOf("(") - 1));
+            setNew.add(s.substring(0, s.indexOf("players") - 1));
         }
         Set<String> setOld = new HashSet<>();
-        for (GameAnnouncement a : games.values()) setOld.add(a.getGameName());
+        for (GameAnnouncement a : games.values()) setOld.add(a.getGameName() + " (" + a.getPlayers().size());
         Set<String> larger = setNew.size() > setOld.size() ? setNew : setOld;
         Set<String> smaller = larger.equals(setNew) ? setOld : setNew;
         larger.removeAll(smaller);
