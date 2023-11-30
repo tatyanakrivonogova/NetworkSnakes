@@ -98,7 +98,7 @@ public class FXMLController implements IController {
             }
             playerName = playerNameField.getText();
         }
-        if (foodsSlider.getValue() > widthSlider.getValue() * heightSlider.getValue() - 2 - 1) {
+        if (foodsSlider.getValue() > widthSlider.getValue() * heightSlider.getValue() - 3) {
             view.showError("Too big foods value. Change and click again");
             return;
         }
@@ -154,17 +154,32 @@ public class FXMLController implements IController {
 
     public void onJoinViewerButtonClick() {
         String selectedString = mastersList.getSelectionModel().getSelectedItem();
+        System.out.println("selected string: " + selectedString);
         if (selectedString == null) {
             view.showError("Select game and click again");
+            return;
         }
         gameController.setLocalPlayerRole(NodeRole.VIEWER);
         gameController.setLocalPlayerName(playerNameField.getText());
-        System.out.println(selectedString);
-        assert selectedString != null;
-        gameController.chooseGame(new String(selectedString.getBytes(), 0, selectedString.length()),
+        int index = selectedString.indexOf("(")-1;
+        String gameName = selectedString.substring(0, index);
+        GameConfig config = gameController.chooseGame(new String(gameName.getBytes(), 0, gameName.length()),
                 PlayerType.HUMAN, playerNameField.getText(), NodeRole.VIEWER);
-        joinViewerButton.setDisable(true);
+        widthSlider.setValue(config.getWidth());
+        heightSlider.setValue(config.getHeight());
+        foodsSlider.setValue(config.getFoodStatic());
+        delaySlider.setValue(config.getStateDelayMs());
+        gameNameField.setText(config.getGameName());
+
+        widthSlider.setDisable(true);
+        heightSlider.setDisable(true);
+        foodsSlider.setDisable(true);
+        delaySlider.setDisable(true);
+        gameNameField.setDisable(true);
+
         joinPlayerButton.setDisable(true);
+        joinViewerButton.setDisable(true);
+        startMasterNodeButton.setDisable(true);
     }
 
     @Override
