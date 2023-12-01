@@ -192,7 +192,6 @@ public class Node implements INode {
 
     @Override
     public void handlePingAck() {
-        //if (isDeputy)
         System.out.println("handle ping ack");
         lastMessageFromMaster = System.currentTimeMillis();
     }
@@ -339,7 +338,7 @@ public class Node implements INode {
         } else if (isDeputy) {
             System.out.println("i am deputy and master is dead");
             //removeMaster();
-            SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.MASTER,
+            SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.DEPUTY,
                     SnakesProto.NodeRole.MASTER, localId, transferProtocol.getNextMessageId());
             transferProtocol.sendMyself(msg);
         } else {

@@ -12,7 +12,7 @@ public interface IGameModel {
     void setConfig(GameConfig config);
     void createNode(IView view);
     void createMasterNode(int localId, GameConfig config, String playerName, PlayerType type, INode node);
-    void replaceMasterNode();
+    void replaceMasterNode(boolean masterIsAlive);
     INode getNode();
     IMasterNode getMasterNode();
     void setLocalPlayer(GamePlayer player);

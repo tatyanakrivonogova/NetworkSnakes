@@ -86,12 +86,16 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
         setFoods();
     }
 
-    public MasterNode(int localId, GameConfig config, INode node, GameState gameState) {
+    public MasterNode(int localId, GameConfig config, INode node, GameState gameState, boolean masterIsAlive) {
         this.node = node;
         this.gameState = gameState;
         for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
             if (p.getValue().getRole() == NodeRole.MASTER) {
-                playerToViewer(p.getKey());
+                if (masterIsAlive) {
+                    playerToViewer(p.getKey());
+                } else {
+                    gameState.getPlayers().remove(p.getKey());
+                }
             }
         }
         this.gameState.getPlayers().get(localId).setRole(NodeRole.MASTER);

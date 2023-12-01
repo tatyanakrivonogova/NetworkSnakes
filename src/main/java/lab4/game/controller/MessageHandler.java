@@ -120,7 +120,7 @@ public class MessageHandler implements IMessageHandler {
             }
             if (msg.getSenderRole() == SnakesProto.NodeRole.DEPUTY && msg.getReceiverRole() == SnakesProto.NodeRole.MASTER) {
                 System.out.println("change role to master");
-                changeRoleToMaster();
+                changeRoleToMaster(false);
             }
         }
         if (msg.hasReceiverRole()) {
@@ -138,15 +138,15 @@ public class MessageHandler implements IMessageHandler {
             }
             if ((msg.getReceiverRole() == SnakesProto.NodeRole.MASTER) && (senderIp == model.getNode().getMasterIp())
                     && (senderPort == model.getNode().getMasterPort())) {
-                changeRoleToMaster();
+                changeRoleToMaster(true);
             }
         }
     }
 
-    private void changeRoleToMaster() {
+    private void changeRoleToMaster(boolean masterIsAlive) {
         model.getLocalPlayer().setRole(NodeRole.MASTER);
         model.getNode().setIsMaster(true);
-        model.replaceMasterNode();
+        model.replaceMasterNode(masterIsAlive);
         model.getMasterNode().run();
     }
 
