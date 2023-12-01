@@ -348,4 +348,17 @@ public class Node implements INode {
             resendNotAckedMessages();
         }
     }
+
+    @Override
+    public void leftGame() {
+        if (isMaster) {
+            SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.VIEWER,
+                    SnakesProto.NodeRole.MASTER, localId, -1);
+            transferProtocol.sendMyself(msg);
+        } else {
+            SnakesProto.GameMessage msg = MessageBuilder.buildRoleChangeMessage(SnakesProto.NodeRole.VIEWER,
+                    SnakesProto.NodeRole.MASTER, localId, transferProtocol.getNextMessageId());
+            transferProtocol.send(msg, masterIp, masterPort);
+        }
+    }
 }

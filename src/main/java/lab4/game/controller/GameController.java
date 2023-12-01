@@ -124,6 +124,12 @@ public class GameController implements IGameController, ReceiveSubscriber {
         model.getLocalPlayer().setRole(role);
     }
 
+    @Override
+    public void leftGame() {
+        model.leftGame();
+        setLocalPlayerRole(NodeRole.VIEWER);
+    }
+
     public void shutdown() {
         if (model.getMasterNode() != null) {
             model.getMasterNode().shutdown();

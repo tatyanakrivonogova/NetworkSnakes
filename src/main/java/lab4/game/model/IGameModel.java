@@ -17,4 +17,5 @@ public interface IGameModel {
     IMasterNode getMasterNode();
     void setLocalPlayer(GamePlayer player);
     GamePlayer getLocalPlayer();
+    void leftGame();
 }

@@ -124,7 +124,7 @@ public class GameState {
 
     private Optional<Coord> findEmptySquare() {
         ArrayList<Coord> emptyCoords = getEmptyCoords();
-        if (getEmptyCoords().isEmpty()) return Optional.empty();
+        if (getEmptyCoords().size() < 25) return Optional.empty();
         for (Coord c: emptyCoords) {
             if (isEmptySquare(c)) return Optional.of(c);
         }
@@ -136,7 +136,7 @@ public class GameState {
         for (int yOffset = -offset; yOffset <= offset; yOffset++) {
             for (int xOffset = -offset; xOffset <= offset; xOffset++) {
                 Coord coord = new Coord(center.getY() + yOffset,center.getX() + xOffset);
-                if (coordsTypeMap.get(coord) == CoordType.SNAKE) {
+                if (coordsTypeMap.get(coord) == CoordType.SNAKE || coordsTypeMap.get(coord) == CoordType.FOOD) {
                     return false;
                 }
             }

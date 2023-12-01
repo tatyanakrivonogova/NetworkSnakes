@@ -37,4 +37,6 @@ public interface IGameController {
 
     NodeRole getLocalPlayerRole();
 
+    void leftGame();
+
 }

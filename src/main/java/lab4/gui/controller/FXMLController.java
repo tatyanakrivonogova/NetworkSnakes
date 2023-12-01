@@ -51,6 +51,9 @@ public class FXMLController implements IController {
     @FXML
     private Button joinViewerButton;
 
+    @FXML
+    private Button leftGameButton;
+
     private Boolean isGameStarted = false;
 
     public FXMLController() {
@@ -69,11 +72,11 @@ public class FXMLController implements IController {
             startMasterNodeButton.setDisable("".equals(newValue));
         });
         gameController.createNode(view);
-        //node = model.getNode();
+        leftGameButton.setDisable(true);
     }
 
     public void handleKeyboard(KeyEvent keyEvent) {
-        if (!gameController.getLocalPlayerRole().equals(NodeRole.VIEWER)) {
+        if (gameController.getLocalPlayerRole() != null && !gameController.getLocalPlayerRole().equals(NodeRole.VIEWER)) {
             switch (keyEvent.getCode()) {
                 case W -> gameController.moveUp();
                 case S -> gameController.moveDown();
@@ -126,6 +129,8 @@ public class FXMLController implements IController {
         gameController.startNode(new GamePlayer(playerName, 1, NodeRole.MASTER, PlayerType.HUMAN, 0), true, config);
         gameController.startMasterNode(config);
         isGameStarted = true;
+
+        leftGameButton.setDisable(false);
     }
 
     public void onUpdateButtonClick() {
@@ -151,16 +156,8 @@ public class FXMLController implements IController {
         delaySlider.setValue(config.getStateDelayMs());
         gameNameField.setText(config.getGameName());
 
-//        widthSlider.setDisable(true);
-//        heightSlider.setDisable(true);
-//        foodsSlider.setDisable(true);
-//        delaySlider.setDisable(true);
-//        gameNameField.setDisable(true);
-//
-//        joinPlayerButton.setDisable(true);
-//        joinViewerButton.setDisable(true);
-//        startMasterNodeButton.setDisable(true);
         disableConfig();
+        leftGameButton.setDisable(false);
     }
 
     public void onJoinViewerButtonClick() {
@@ -182,21 +179,18 @@ public class FXMLController implements IController {
         delaySlider.setValue(config.getStateDelayMs());
         gameNameField.setText(config.getGameName());
 
-//        widthSlider.setDisable(true);
-//        heightSlider.setDisable(true);
-//        foodsSlider.setDisable(true);
-//        delaySlider.setDisable(true);
-//        gameNameField.setDisable(true);
-//
-//        joinPlayerButton.setDisable(true);
-//        joinViewerButton.setDisable(true);
-//        startMasterNodeButton.setDisable(true);
         disableConfig();
+        leftGameButton.setDisable(false);
+    }
+
+    public void leftGame() {
+        gameController.leftGame();
     }
 
     @Override
     public void stop() {
         view.shutdown();
+        gameController.leftGame();
         gameController.shutdown();
     }
 }

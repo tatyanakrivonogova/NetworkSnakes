@@ -62,5 +62,7 @@ public interface INode {
 
     void moveDown();
 
+    void leftGame();
+
     void shutdown();
 }

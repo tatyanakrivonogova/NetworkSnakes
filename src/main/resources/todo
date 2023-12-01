@@ -6,15 +6,15 @@
 6. refactoring of master node, game model !
 7. score panel on GUI !
 8. validation of config
-9. scale of field
+9. scale of field !
 10. highlight own snake !
 11. gui color !
 12. warning about fx versions !
-13. check scores
+13. check scores !
 14. add config params for choice of game !
-15. snakes grow after master death, scores is zero
+15. snakes grow after master death, scores is zero !
 16. exception in DatagramSocketWrapper
-17. death of snake in the beginning
+17. death of snake in the beginning ?
 18. three players !
 19. status message !
 20. set of foods !
@@ -25,7 +25,7 @@
 25. add list of players on view
 26. remove changing of master every time !
 27. removeMaster()???
-28. add exit button
+28. add exit button !
 
 deputy death - good
 master death - for deputy snakes grow, for normal nothing works

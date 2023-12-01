@@ -10,6 +10,7 @@ import lab4.game.Coord;
 import lab4.game.GameAnnouncement;
 import lab4.game.GameState;
 import lab4.game.snake.Snake;
+import lab4.game.snake.SnakeState;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -87,7 +88,9 @@ public class View implements IView {
         drawGrid(config.getWidth(), config.getHeight());
         state.getFoods().forEach(this::drawFood);
         state.getSnakes().forEach((id, snake) -> {
-            if (snake.getPlayerId() == state.getLocalId()) {
+            if (snake.getSnakeState() == SnakeState.ZOMBIE) {
+                drawSnake(snake, Color.GRAY);
+            } else if (snake.getPlayerId() == state.getLocalId()) {
                 drawSnake(snake, Color.BLUEVIOLET);
             } else {
                 drawSnake(snake, Color.DARKOLIVEGREEN);

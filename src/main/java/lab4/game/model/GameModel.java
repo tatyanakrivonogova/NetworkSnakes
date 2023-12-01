@@ -46,4 +46,12 @@ public class GameModel implements IGameModel {
     public void setLocalPlayer(GamePlayer player) { this.localPlayer = player; }
     @Override
     public GamePlayer getLocalPlayer() { return localPlayer; }
+
+    @Override
+    public void leftGame() {
+//        if (masterNode != null) {
+//            masterNode.shutdown();
+//        }
+        if (node != null) node.leftGame();
+    }
 }

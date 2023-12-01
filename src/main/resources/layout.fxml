@@ -45,6 +45,7 @@
                         <Button fx:id="joinPlayerButton" layoutX="111.0" layoutY="440.0" mnemonicParsing="false" onAction="#onJoinPlayerButtonClick" text="Join as player" />
                         <Button fx:id="updateListButton" layoutX="14.0" layoutY="453.0" mnemonicParsing="false" onAction="#onUpdateButtonClick" text="Update list" />
                         <Button fx:id="joinViewerButton" layoutX="110.0" layoutY="479.0" mnemonicParsing="false" onAction="#onJoinViewerButtonClick" text="Join as viewer" />
+                  <Button fx:id="leftGameButton" layoutX="75.0" layoutY="536.0" mnemonicParsing="false" onAction="#leftGame" text="Left game" />
 
                     </children>
                 </AnchorPane>
@@ -62,8 +63,8 @@
                         <Label alignment="CENTER" font="$x1" layoutX="14.0" layoutY="14.0" prefHeight="21.0" prefWidth="179.0" style="&#10;" text="Create own game" textAlignment="CENTER" wrapText="false" />
                         <Label layoutX="14.0" layoutY="74.0" text="Width" />
                         <Label layoutX="14.0" layoutY="104.0" text="Height" />
-                        <Slider fx:id="widthSlider" layoutX="86.0" layoutY="74.0" max="60.0" min="10.0" prefHeight="16.0" prefWidth="97.0" value="10.0" />
-                        <Slider fx:id="heightSlider" layoutX="86.0" layoutY="104.0" max="46.0" min="10.0" prefHeight="16.0" prefWidth="97.0" value="10.0" />
+                        <Slider fx:id="widthSlider" layoutX="86.0" layoutY="74.0" max="32.0" min="10.0" prefHeight="16.0" prefWidth="97.0" value="10.0" />
+                        <Slider fx:id="heightSlider" layoutX="86.0" layoutY="104.0" max="32.0" min="10.0" prefHeight="16.0" prefWidth="97.0" value="10.0" />
                         <Slider fx:id="foodsSlider" layoutX="88.0" layoutY="135.0" prefHeight="16.0" prefWidth="97.0" />
                         <Label layoutX="16.0" layoutY="135.0" text="Foods" />
                         <Label fx:id="widthLabel" layoutX="185.0" layoutY="74.0" text="10" />

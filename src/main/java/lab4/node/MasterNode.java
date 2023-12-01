@@ -89,18 +89,13 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
     public MasterNode(int localId, GameConfig config, INode node, GameState gameState, boolean masterIsAlive) {
         this.node = node;
         this.gameState = gameState;
-        System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-        for (Map.Entry<Integer, Snake> snake : gameState.getSnakes().entrySet()) {
-            System.out.println(")))))))))))))))))))))))))))))))))))))))))))");
-            for (Coord c: snake.getValue().getBody()) System.out.println(c.getX() + " " + c.getY());
-        }
-        System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
         for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
             if (p.getValue().getRole() == NodeRole.MASTER) {
                 if (masterIsAlive) {
                     playerToViewer(p.getKey());
                 } else {
                     gameState.getPlayers().remove(p.getKey());
+                    gameState.getSnakes().get(p.getKey()).setSnakeState(SnakeState.ZOMBIE);
                 }
             }
         }
@@ -176,7 +171,8 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
                 if (snake1.getPlayerId() != snake2.getPlayerId() && snake1.isBumped(snake2.getBody().get(0))) {
                     if (snake2.getSnakeState() != SnakeState.ZOMBIE) diedPlayersId.add(snake2.getPlayerId());
                     gameState.diedSnakeToFood(snake2);
-                    if (snake1.getSnakeState() != SnakeState.ZOMBIE) gameState.getPlayers().get(id1).increaseScore(1);
+                    if (snake1.getSnakeState() != SnakeState.ZOMBIE && gameState.getPlayers().get(id1) != null)
+                        gameState.getPlayers().get(id1).increaseScore(1);
                 }
             });
             if (snake1.isBumpedSelf()) {
@@ -199,7 +195,8 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
             if (snake.isBumped(food)) {
                 if (eatenFoods.add(food)) {
                     snake.grow();
-                    if (snake.getSnakeState() != SnakeState.ZOMBIE) gameState.getPlayers().get(id).increaseScore(1);
+                    if (snake.getSnakeState() != SnakeState.ZOMBIE && gameState.getPlayers().get(id) != null)
+                        gameState.getPlayers().get(id).increaseScore(1);
                 }
             }
         }));
@@ -362,6 +359,7 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
                         replaceDeputy();
                     }
                     gameState.getPlayers().remove(p.getKey());
+                    gameState.getSnakes().get(p.getKey()).setSnakeState(SnakeState.ZOMBIE);
                     if (gameState.getSnakes().get(p.getKey()) != null)
                         gameState.getSnakes().get(p.getKey()).setSnakeState(SnakeState.ZOMBIE);
                     System.out.println("player deleted");
