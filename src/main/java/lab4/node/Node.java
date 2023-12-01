@@ -160,8 +160,10 @@ public class Node implements INode {
     @Override
     public void handleState(SnakesProto.GameState state, InetAddress masterIp, int masterPort) {
         if (masterIp != null && masterPort != -1 && (!masterIp.equals(this.masterIp) || masterPort != this.masterPort)) {
-            logger.error("State from unknown host");
-            return;
+            if (masterIp != deputyIp && masterPort != deputyPort) {
+                logger.error("State from unknown host");
+                return;
+            }
         }
         this.gameState = StateMapper.toClass(state, localId, gameConfig);
 

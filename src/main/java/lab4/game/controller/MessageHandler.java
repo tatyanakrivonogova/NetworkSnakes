@@ -144,9 +144,12 @@ public class MessageHandler implements IMessageHandler {
     }
 
     private void changeRoleToMaster(boolean masterIsAlive) {
+        InetAddress oldMasterIp = model.getNode().getMasterIp();
+        int oldMasterPort = model.getNode().getMasterPort();
+        int oldMasterId = model.getNode().getMasterId();
         model.getLocalPlayer().setRole(NodeRole.MASTER);
         model.getNode().setIsMaster(true);
-        model.replaceMasterNode(masterIsAlive);
+        model.replaceMasterNode(masterIsAlive, oldMasterIp, oldMasterPort, oldMasterId);
         model.getMasterNode().run();
     }
 

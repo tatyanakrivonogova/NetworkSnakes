@@ -7,12 +7,14 @@ import lab4.gui.view.IView;
 import lab4.node.IMasterNode;
 import lab4.node.INode;
 
+import java.net.InetAddress;
+
 public interface IGameModel {
     GameConfig getConfig();
     void setConfig(GameConfig config);
     void createNode(IView view);
     void createMasterNode(int localId, GameConfig config, String playerName, PlayerType type, INode node);
-    void replaceMasterNode(boolean masterIsAlive);
+    void replaceMasterNode(boolean masterIsAlive, InetAddress oldMasterIp, int oldMasterPort, int oldMasterId);
     INode getNode();
     IMasterNode getMasterNode();
     void setLocalPlayer(GamePlayer player);

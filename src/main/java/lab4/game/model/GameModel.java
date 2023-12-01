@@ -9,6 +9,8 @@ import lab4.node.INode;
 import lab4.node.MasterNode;
 import lab4.node.Node;
 
+import java.net.InetAddress;
+
 public class GameModel implements IGameModel {
     private GameConfig config;
     private INode node;
@@ -35,8 +37,9 @@ public class GameModel implements IGameModel {
         this.masterNode = new MasterNode(localId, config, playerName, type, node);
     }
     @Override
-    public void replaceMasterNode(boolean masterIsAlive) {
-        this.masterNode = new MasterNode(localPlayer.getId(), node.getGameConfig(), node, node.getGameState(), masterIsAlive);
+    public void replaceMasterNode(boolean masterIsAlive, InetAddress oldMasterIp, int oldMasterPort, int oldMasterId) {
+        this.masterNode = new MasterNode(localPlayer.getId(), node.getGameConfig(), node, node.getGameState(), masterIsAlive,
+                oldMasterIp, oldMasterPort, oldMasterId);
     }
     @Override
     public INode getNode() { return node; }

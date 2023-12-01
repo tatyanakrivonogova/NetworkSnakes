@@ -42,6 +42,8 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
     private InetAddress deputyIp;
     private int deputyPort;
 
+    private boolean isMasterDead;
+
     public MasterNode(int localId, GameConfig config, String playerName, PlayerType type, INode node) {
         this.node = node;
         this.diedPlayersId = new ArrayList<>();
@@ -70,6 +72,7 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
         this.deputyId = -1;
         this.deputyIp = null;
         this.deputyPort = -1;
+        this.isMasterDead = false;
         announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
             try {
                 sendAnnouncement();
@@ -82,17 +85,24 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
         stateSender = new InfiniteShootsTimer(config.getStateDelayMs(), () -> {
             updateState();
             sendState();
+            if (isMasterDead) {
+                System.out.println("replace master");
+                replaceMaster();
+            }
         });
         setFoods();
     }
 
-    public MasterNode(int localId, GameConfig config, INode node, GameState gameState, boolean masterIsAlive) {
+    public MasterNode(int localId, GameConfig config, INode node, GameState gameState, boolean masterIsAlive,
+                      InetAddress oldMasterIp, int oldMasterPort, int oldMasterId) {
         this.node = node;
         this.gameState = gameState;
         for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
-            if (p.getValue().getRole() == NodeRole.MASTER) {
+            if (p.getKey() == oldMasterId) {
                 if (masterIsAlive) {
                     playerToViewer(p.getKey());
+                    p.getValue().setIpAddress(oldMasterIp);
+                    p.getValue().setPort(oldMasterPort);
                 } else {
                     gameState.getPlayers().remove(p.getKey());
                     gameState.getSnakes().get(p.getKey()).setSnakeState(SnakeState.ZOMBIE);
@@ -129,6 +139,7 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
         this.deputyId = -1;
         this.deputyIp = null;
         this.deputyPort = -1;
+        this.isMasterDead = false;
 
         this.deputyAckAwaiting = false;
         announcementSender = new InfiniteShootsTimer(ANNOUNCEMENT_TIMEOUT, () -> {
@@ -143,6 +154,10 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
         stateSender = new InfiniteShootsTimer(config.getStateDelayMs(), () -> {
             updateState();
             sendState();
+            if (isMasterDead) {
+                System.out.println("replace master");
+                replaceMaster();
+            }
         });
         chooseNewDeputy();
     }
@@ -184,8 +199,9 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
             gameState.getSnakes().remove(id);
             GamePlayer diedPlayer = gameState.getPlayers().get(id);
             if (diedPlayer.getRole() == NodeRole.MASTER) {
-                System.out.println("replace master");
-                replaceMaster();
+                //System.out.println("replace master");
+                isMasterDead = true;
+                //replaceMaster();
             }
             sendRoleChangeToViewer(diedPlayer);
             playerToViewer(id);
@@ -370,8 +386,7 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
 
     private void replaceMaster() {
         if (deputyIp != null && deputyPort != -1) sendRoleChangeToMaster();
-        announcementSender.cancel();
-        stateSender.cancel();
+        shutdown();
     }
     private void replaceDeputy() {
         if (gameState.getPlayers().size() > 2) {

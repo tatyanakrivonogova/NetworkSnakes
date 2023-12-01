@@ -9,13 +9,12 @@ import lab4.config.GameConfig;
 import lab4.game.Coord;
 import lab4.game.GameAnnouncement;
 import lab4.game.GameState;
+import lab4.game.NodeRole;
+import lab4.game.player.GamePlayer;
 import lab4.game.snake.Snake;
 import lab4.game.snake.SnakeState;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class View implements IView {
     private static final int CELL_SIZE = 20;
@@ -42,7 +41,12 @@ public class View implements IView {
             setNew.add(s.substring(0, s.indexOf("players") - 1));
         }
         Set<String> setOld = new HashSet<>();
-        for (GameAnnouncement a : games.values()) setOld.add(a.getGameName() + " (" + a.getPlayers().size());
+        for (GameAnnouncement a : games.values()) {
+            int playersNumber = 0;
+            for (Map.Entry<Integer, GamePlayer> p: a.getPlayers().entrySet())
+                if (p.getValue().getRole() != NodeRole.VIEWER) playersNumber++;
+            setOld.add(a.getGameName() + " (" + playersNumber);
+        }
         Set<String> larger = setNew.size() > setOld.size() ? setNew : setOld;
         Set<String> smaller = larger.equals(setNew) ? setOld : setNew;
         larger.removeAll(smaller);
@@ -55,7 +59,10 @@ public class View implements IView {
         var iterator = games.values().iterator();
         for (int i = 0; i < games.size(); i++) {
             GameAnnouncement g = iterator.next();
-            activeGames.add(g.getGameName() + " (" + g.getPlayers().size() + " players, "
+            int playersNumber = 0;
+            for (Map.Entry<Integer, GamePlayer> p: g.getPlayers().entrySet())
+                if (p.getValue().getRole() != NodeRole.VIEWER) playersNumber++;
+            activeGames.add(g.getGameName() + " (" + playersNumber + " players, "
                     + g.getConfig().getWidth() + "*" + g.getConfig().getHeight() + ", "
                     + g.getConfig().getFoodStatic() + " + x" + ")");
         }

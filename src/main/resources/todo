@@ -19,13 +19,14 @@
 19. status message !
 20. set of foods !
 21. the same name of game !
-22. dead master's snake
+22. dead master's snake !
 23. update number of players in announcement !
 24. in deputy master ping timeout (problem)
 25. add list of players on view
 26. remove changing of master every time !
 27. removeMaster()???
 28. add exit button !
+29. add changing of number of players during game !
 
 deputy death - good
 master death - for deputy snakes grow, for normal nothing works
