@@ -23,7 +23,8 @@
 23. update number of players in announcement !
 24. in deputy master ping timeout
 25. add list of players on view
-26. remove changing of master every time
+26. remove changing of master every time !
+27. removeMaster()???
 
 deputy death - good
 master death - for deputy snakes grow, for normal nothing works

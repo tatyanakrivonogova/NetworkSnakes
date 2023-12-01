@@ -323,6 +323,10 @@ public class Node implements INode {
         }
     }
 
+    private void resendNotAckedMessages() {
+        transferProtocol.resendNotAckedMessages();
+    }
+
     private void ackNewRole() {
         logger.info("ackNewRole: Master id " + masterId);
         SnakesProto.GameMessage message = MessageBuilder.buildAckMessage(0, localId, masterId);
@@ -342,6 +346,7 @@ public class Node implements INode {
             System.out.println("i am normal and master is dead");
             changeMaster(deputyIp, deputyPort, deputyId);
             lastMessageFromMaster = System.currentTimeMillis();
+            resendNotAckedMessages();
         }
     }
 }

@@ -1,5 +1,6 @@
 package lab4.network;
 
+import javafx.util.Pair;
 import lab4.exceptions.WrongMessageException;
 import lab4.messages.MessageBuilder;
 import lab4.messages.RawMessage;
@@ -21,6 +22,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPublisher {
     private static volatile TransferProtocol transferProtocolInstance;
@@ -28,23 +30,21 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
     private final IDatagramChannel datagramChannel;
     private final Logger logger = LoggerFactory.getLogger(TransferProtocol.class);
     private int ackTimeout;
-    private final ConcurrentHashMap<Long, SentMessage> toSend;
+    private final ConcurrentLinkedQueue<Pair<Long, SentMessage>> toSend;
     private final ConcurrentHashMap<InetSocketAddress, HashMap<Long, ReceivedMessage>> receivedMessages;
     private final ConcurrentHashMap<Long, OneShootTimer> timerMap;
     private final ConcurrentHashMap<SentMessage, Long> notAckedMessages;
     private final ArrayList<ReceiveSubscriber> receiveSubscribers = new ArrayList<>();
     private final ArrayList<TimeoutSubscriber> timeoutSubscribers = new ArrayList<>();
     private long nextMessageId;
-    private long sendingNumber;
 
 
     private TransferProtocol() throws IOException {
-        toSend = new ConcurrentHashMap<>();
+        toSend = new ConcurrentLinkedQueue<>();
         receivedMessages = new ConcurrentHashMap<>();
         notAckedMessages = new ConcurrentHashMap<>();
         timerMap = new ConcurrentHashMap<>();
         datagramChannel = new DatagramSocketWrapper();
-        sendingNumber = 1;
         nextMessageId = 0;
     }
 
@@ -77,11 +77,10 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
     public void run() {
         while (true) {
             if (!toSend.isEmpty()) {
-                SentMessage toSendMessage = toSend.get(sendingNumber);
+                SentMessage toSendMessage = toSend.poll().getValue();
                 if (toSendMessage != null) {
                     try {
                         sendUnicastMessageWithAck(toSendMessage);
-                        sendingNumber++;
                     } catch (IOException e) {
                         logger.error("TransferProtocol.run(): " + e);
                         throw new RuntimeException(e);
@@ -119,7 +118,7 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
         } else {
             newMessage = new SentMessage(message, rcvAddress, rcvPort);
             long seq = message.getMsgSeq();
-            toSend.put(seq, newMessage);
+            toSend.add(new Pair<>(seq, newMessage));
         }
     }
 
@@ -199,17 +198,23 @@ public class TransferProtocol implements Runnable, ReceivePublisher, TimeoutPubl
             timerMap.get(seq).cancel();
         }
         timerMap.remove(seq);
-
-        if (toSend.get(seq) != null) {
-            toSend.get(seq).ack();
-            toSend.remove(seq);
-        }
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//        if (toSend.get(seq) != null) {
+//            toSend.get(seq).ack();
+//            toSend.remove(seq);
+//        }
     }
 
     private void sendAck(long seq, InetAddress receiverAddress, int receiverPort) throws IOException {
         //System.out.println("transfer protocol: send ack");
         SnakesProto.GameMessage message = MessageBuilder.buildAckMessage(seq, 0, 0);
         datagramChannel.send(message.toByteArray(), receiverAddress, receiverPort);
+    }
+
+    public void resendNotAckedMessages() {
+        for (Map.Entry<SentMessage, Long> msg : notAckedMessages.entrySet()) {
+            toSend.add(new Pair<>(msg.getKey().getSeq(), msg.getKey()));
+        }
     }
 
     @Override
