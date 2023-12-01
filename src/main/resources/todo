@@ -14,7 +14,7 @@
 14. add config params for choice of game !
 15. snakes grow after master death, scores is zero !
 16. exception in DatagramSocketWrapper
-17. death of snake in the beginning ?
+17. death of snake in the beginning !
 18. three players !
 19. status message !
 20. set of foods !

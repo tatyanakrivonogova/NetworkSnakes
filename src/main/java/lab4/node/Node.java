@@ -189,7 +189,7 @@ public class Node implements INode {
 
     @Override
     public void handlePing(InetAddress senderIp, int senderPort) {
-        System.out.println("pinggggggggggggggggggg");
+        //System.out.println("pinggggggggggggggggggg");
     }
 
     @Override
@@ -301,6 +301,7 @@ public class Node implements INode {
         announcementUpdater.cancel();
         pingMasterSender.cancel();
         transferProtocol.shutdown();
+
     }
 
     private void updateMasters(ArrayList<Long> toDelete) {

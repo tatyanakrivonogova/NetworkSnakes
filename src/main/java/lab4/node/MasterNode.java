@@ -277,7 +277,7 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
     @Override
     public void handleSteer(long msgSeq, SnakesProto.Direction headDirection, int senderId) {
         Snake snake = gameState.getSnakes().get(senderId);
-        if (snake != null) {
+        if (snake != null && snake.getSnakeState() != SnakeState.ZOMBIE) {
             if (snakeDirections.get(snake) == null || msgSeq > snakeDirections.get(snake).getKey() || msgSeq == 0) {
                 Direction newDir = DirectionMapper.toClass(headDirection);
                 assert newDir != null;
@@ -307,7 +307,7 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
     }
 
     private void sendState() {
-        System.out.println("sendState players: " + gameState.getPlayers().size());
+        //System.out.println("sendState players: " + gameState.getPlayers().size());
         for (Map.Entry<Integer, GamePlayer> p: gameState.getPlayers().entrySet())
             System.out.println("*" + p.getKey() + " " + p.getValue().getRole());
         gameState.getPlayers().forEach((id, player) -> {

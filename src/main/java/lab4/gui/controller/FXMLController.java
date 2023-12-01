@@ -180,7 +180,6 @@ public class FXMLController implements IController {
         gameNameField.setText(config.getGameName());
 
         disableConfig();
-        leftGameButton.setDisable(false);
     }
 
     public void leftGame() {
