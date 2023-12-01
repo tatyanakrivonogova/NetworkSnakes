@@ -86,7 +86,7 @@ public class Snake {
         Coord accOffset = prevOffset;
         while (iter1.hasNext()) {
             Coord curOffset = iter1.next();
-            if (curOffset != prevOffset) {
+            if (curOffset.getX() != prevOffset.getX() || curOffset.getY() != prevOffset.getY()) {
                 keyCoords.add(accOffset);
                 accOffset = new Coord(0, 0);
             }
@@ -98,10 +98,13 @@ public class Snake {
     }
 
     private void keyCoordsToBody(List<Coord> keyCoords) {
+        body.clear();
         Coord prev = keyCoords.get(0);
         for (int i = 1; i < keyCoords.size(); i++) {
             List<Coord> coords = createSnakePart(prev, keyCoords.get(i));
-            if (coords != null) body.addAll(coords);
+            if (coords != null) {
+                body.addAll(coords);
+            }
             prev = new Coord(prev.getX() + keyCoords.get(i).getX(), prev.getY() + keyCoords.get(i).getY());
         }
         body.add(prev);

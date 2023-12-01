@@ -89,6 +89,12 @@ public class MasterNode implements IMasterNode, TimeoutSubscriber {
     public MasterNode(int localId, GameConfig config, INode node, GameState gameState, boolean masterIsAlive) {
         this.node = node;
         this.gameState = gameState;
+        System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+        for (Map.Entry<Integer, Snake> snake : gameState.getSnakes().entrySet()) {
+            System.out.println(")))))))))))))))))))))))))))))))))))))))))))");
+            for (Coord c: snake.getValue().getBody()) System.out.println(c.getX() + " " + c.getY());
+        }
+        System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
         for (Map.Entry<Integer, GamePlayer> p : gameState.getPlayers().entrySet()) {
             if (p.getValue().getRole() == NodeRole.MASTER) {
                 if (masterIsAlive) {
