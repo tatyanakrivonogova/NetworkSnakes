@@ -114,7 +114,8 @@ public class MessageHandler implements IMessageHandler {
             if (msg.getSenderRole() == SnakesProto.NodeRole.VIEWER) {
                 if (model.getLocalPlayer().getRole() == NodeRole.MASTER) {
                     model.getMasterNode().handleRoleChangeToViewer(senderIp, senderPort, senderId);
-                } else {
+                }
+                else {
                     logger.error("Requested changing role to viewer, but node is not master");
                 }
             }
@@ -128,6 +129,7 @@ public class MessageHandler implements IMessageHandler {
             if (msg.getReceiverRole() == SnakesProto.NodeRole.VIEWER) {
                 if (senderIp == model.getNode().getMasterIp()) {
                     //kill snake
+                    model.getLocalPlayer().setRole(NodeRole.VIEWER);
                     System.out.println("change role to viewer");
                 } else {
                     logger.error("Change role to viewer command from not-master node");

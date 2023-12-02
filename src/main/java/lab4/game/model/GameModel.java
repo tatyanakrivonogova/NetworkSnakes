@@ -52,9 +52,10 @@ public class GameModel implements IGameModel {
 
     @Override
     public void leftGame() {
-//        if (masterNode != null) {
-//            masterNode.shutdown();
-//        }
+        if (masterNode != null) {
+            System.out.println("master node shutdown");
+            masterNode.shutdown();
+        }
         if (node != null) node.leftGame();
     }
 }
